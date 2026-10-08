@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
-import { buttonStyle, cellStyle, colors, inlineFormStyle, inputStyle, messageStyle, sectionTitleStyle } from '../styles.js'
+import { buttonStyle, cellStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, messageStyle, sectionTitleStyle } from '../styles.js'
 
 // Admin only: everyone in the institute, plus the teacher invite form.
 export default function MembersPanel() {
@@ -10,6 +10,7 @@ export default function MembersPanel() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('teacher')
   const [inviteMsg, setInviteMsg] = useState(null)
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     api.get('/api/members', { params: roleFilter ? { role: roleFilter } : {} })
@@ -20,12 +21,24 @@ export default function MembersPanel() {
   async function handleInvite(event) {
     event.preventDefault()
     setInviteMsg(null)
+    setSending(true)
     try {
       const response = await api.post('/api/invites', { email: inviteEmail, role: inviteRole })
       setInviteMsg({ ok: response.data.emailSent, text: response.data.message, link: response.data.inviteUrl })
       setInviteEmail('')
     } catch (requestError) {
       setInviteMsg({ ok: false, text: errorMessage(requestError, 'Could not send invite.') })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(inviteMsg.link)
+      setInviteMsg((current) => ({ ...current, copied: true }))
+    } catch {
+      // Clipboard can be blocked; the link is still shown for manual copying.
     }
   }
 
@@ -68,12 +81,22 @@ export default function MembersPanel() {
           <option value="teacher">teacher</option>
           <option value="admin">admin</option>
         </select>
-        <button type="submit" style={buttonStyle}>Invite</button>
+        <button type="submit" disabled={sending} style={{ ...buttonStyle, opacity: sending ? 0.6 : 1 }}>
+          {sending ? 'Sending…' : 'Invite'}
+        </button>
       </form>
+      {sending && <p style={{ color: colors.muted, fontSize: '0.85rem' }}>Sending the email can take up to 15 seconds…</p>}
       {inviteMsg && (
         <p style={messageStyle(inviteMsg.ok)}>
           {inviteMsg.text}
-          {inviteMsg.link && <><br /><span style={{ color: colors.muted }}>Link: {inviteMsg.link}</span></>}
+          {inviteMsg.link && (
+            <>
+              <br /><span style={{ color: colors.muted }}>Link: {inviteMsg.link}</span>{' '}
+              <button type="button" onClick={copyLink} style={{ ...ghostButtonStyle, marginTop: '0.4rem' }}>
+                {inviteMsg.copied ? 'Copied' : 'Copy link'}
+              </button>
+            </>
+          )}
         </p>
       )}
     </section>
