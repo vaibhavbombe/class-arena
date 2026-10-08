@@ -4,6 +4,9 @@ A multi-tenant classroom and competition platform for institutes. **Work in prog
 Phase 1 (accounts, roles, classes) is built. Tests, live quizzes, coding contests and
 AI features are planned and do not exist yet.
 
+**Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
+first request after it has been idle can take ~50 seconds)
+
 ## What works today (Phase 1)
 - **Institutes as tenants.** Signing up creates an institute and makes you its admin.
 - **Three roles.**
