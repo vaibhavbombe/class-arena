@@ -7,6 +7,9 @@ const app = express()
 app.use(cors({ origin: process.env.CLIENT_URL }))
 app.use(express.json())
 
+// For Render's health check. No database call, so it stays cheap.
+app.get('/api/health', (req, res) => res.json({ ok: true }))
+
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api', require('./routes/institute'))
