@@ -3,8 +3,11 @@ const bcrypt = require('bcrypt')
 const User = require('../models/User')
 const Institution = require('../models/Institution')
 const RefreshToken = require('../models/RefreshToken')
+const Class = require('../models/Class')
+const Enrollment = require('../models/Enrollment')
 const { signAccessToken, issueRefreshToken, authResponse } = require('../lib/tokens')
 const { rejectInvalid } = require('../lib/validate')
+const { normalizeJoinCode } = require('../lib/joinCode')
 
 const router = express.Router()
 const SALT_ROUNDS = 10
@@ -35,6 +38,32 @@ router.post('/signup', async (req, res) => {
   res.status(201).json({
     ...(await authResponse(user)),
     institution: { id: institution._id, name: institution.name },
+  })
+})
+
+// Students don't need an invite: a class join code puts them in that class's
+// institute. The institute comes from the class, never from the request.
+router.post('/student-signup', async (req, res) => {
+  if (rejectInvalid(res, req.body, ['email', 'password', 'name', 'joinCode'])) return
+  const { email, password, name } = req.body
+
+  const joinCode = normalizeJoinCode(req.body.joinCode)
+  const cls = joinCode && await Class.findOne({ joinCode })
+  if (!cls) return res.status(404).json({ error: 'No class found with that code' })
+
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS)
+  let user
+  try {
+    user = await User.create({ email, passwordHash, name, institutionId: cls.institutionId, role: 'student' })
+  } catch (err) {
+    if (err.code === 11000) return res.status(409).json({ error: 'An account with this email already exists. Log in and join the class from your dashboard.' })
+    throw err
+  }
+  await Enrollment.create({ institutionId: cls.institutionId, classId: cls._id, studentId: user._id })
+
+  res.status(201).json({
+    ...(await authResponse(user)),
+    class: { id: cls._id, name: cls.name },
   })
 })
 

@@ -8,6 +8,7 @@ app.use(cors({ origin: process.env.CLIENT_URL }))
 app.use(express.json())
 
 app.use('/api/auth', require('./routes/auth'))
+app.use('/api/classes', require('./routes/classes'))
 app.use('/api', require('./routes/institute'))
 
 // Catch-all error handler. Log details on the server,
