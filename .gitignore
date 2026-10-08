@@ -1,0 +1,6 @@
+node_modules
+.env
+dist
+.vite
+# stray clone of saas-starter, safe to delete by hand
+saas-starter/
