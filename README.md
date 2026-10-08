@@ -43,7 +43,8 @@ bcrypt, jsonwebtoken, nodemailer (Gmail) · Vercel (client), Render (server)
 - No automated test suite in the repo yet. Phase 1 was checked with manual API smoke scripts
   and by clicking through the UI.
 - The Render free tier sleeps when idle, so the first request after a while can take ~50 seconds.
-- Invite emails go through a personal Gmail account and can land in spam.
+- Invite emails are sent from a personal address (Brevo free tier, 300/day) and can land in spam.
+  If sending fails, the admin still gets the invite link to share by hand.
 
 ## Run locally
 Requires Node 20.19+ and a MongoDB Atlas (or local MongoDB) connection string.
@@ -67,7 +68,8 @@ Server environment variables:
 | `MONGODB_URI` | Atlas connection string, including the database name |
 | `JWT_ACCESS_SECRET` | Long random string for signing access tokens |
 | `CLIENT_URL` | Client origin, used for CORS and invite links (no trailing slash) |
-| `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Sends invite emails (Gmail app password) |
+| `BREVO_API_KEY`, `MAIL_FROM` | Production email via Brevo's HTTP API (`MAIL_FROM` must be a verified sender) |
+| `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Local email via Gmail SMTP, used when `BREVO_API_KEY` is not set |
 | `PORT` | Defaults to 5002 |
 
 ## API (Phase 1)
