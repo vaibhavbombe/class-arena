@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api.js'
-import { errorMessage, saveSession } from '../session.js'
+import { errorMessage, isLoggedIn, saveSession } from '../session.js'
 import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle } from '../styles.js'
 
 // Students self-register with a class join code (/join?code=ABC234 pre-fills it).
@@ -10,6 +10,7 @@ export default function StudentSignup() {
   const [form, setForm] = useState({ joinCode: searchParams.get('code') || '', name: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [alreadyLoggedIn] = useState(isLoggedIn)
   const navigate = useNavigate()
 
   function handleChange(event) {
@@ -36,6 +37,12 @@ export default function StudentSignup() {
     <main style={narrowPageStyle}>
       <h1 style={{ color: colors.accent }}>Join a class</h1>
       <p style={{ color: colors.muted, fontSize: '0.85rem' }}>Ask your teacher for the 6-character class code.</p>
+      {alreadyLoggedIn && (
+        <p style={{ color: colors.muted, fontSize: '0.85rem' }}>
+          Someone is already logged in on this browser. Signing up will log them out in every tab.
+          Already a student? <Link to="/dashboard" style={linkStyle}>Join from your dashboard</Link> instead.
+        </p>
+      )}
       <form onSubmit={handleSubmit} style={formStyle}>
         <input name="joinCode" value={form.joinCode} placeholder="Class code (e.g. K7P2QX)" onChange={handleChange} required autoComplete="off" style={{ ...inputStyle, textTransform: 'uppercase', letterSpacing: '0.15em' }} />
         <input name="name" value={form.name} placeholder="Your name" onChange={handleChange} required style={inputStyle} />
