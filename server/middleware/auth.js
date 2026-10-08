@@ -10,21 +10,24 @@ async function requireAuth(req, res, next) {
 
   const token = header.split(' ')[1]
 
+  let payload
   try {
-    const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
-    const user = await User.findById(payload.userId)
-
-    if (!user) {
-      return res.status(401).json({ error: 'User no longer exists' })
-    }
-
-    req.userId = user._id.toString()
-    req.companyId = user.companyId
-    req.role = user.role
-    next()
-  } catch (err) {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
+  } catch {
     return res.status(401).json({ error: 'Invalid or expired token' })
   }
+
+  // Still look the user up: a deleted user or a changed role takes effect
+  // immediately instead of after the 15 minute token lifetime.
+  const user = await User.findById(payload.userId).select('institutionId role')
+  if (!user || user.institutionId.toString() !== payload.institutionId) {
+    return res.status(401).json({ error: 'User no longer exists' })
+  }
+
+  req.userId = user._id.toString()
+  req.institutionId = payload.institutionId
+  req.role = user.role
+  next()
 }
 
 function requireRole(...allowedRoles) {
