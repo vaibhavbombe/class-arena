@@ -8,7 +8,8 @@ app.use(cors({ origin: process.env.CLIENT_URL }))
 app.use(express.json())
 
 // For Render's health check. No database call, so it stays cheap.
-app.get('/api/health', (req, res) => res.json({ ok: true }))
+// `commit` (set by Render) shows which version is live; the repo is public, so it's not secret.
+app.get('/api/health', (req, res) => res.json({ ok: true, commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? 'local' }))
 
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))

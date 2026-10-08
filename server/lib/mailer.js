@@ -33,7 +33,7 @@ async function sendWithBrevo({ to, subject, text }) {
     headers: { 'api-key': BREVO_API_KEY,'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
       // Must be a sender verified in the Brevo dashboard.
-      sender: { name: SENDER_NAME, email: process.env.MAIL_FROM || process.env.GMAIL_USER },
+      sender: { name: SENDER_NAME, email: (process.env.MAIL_FROM || process.env.GMAIL_USER || '').trim() },
       to: [{ email: to }],
       subject,
       textContent: text,
