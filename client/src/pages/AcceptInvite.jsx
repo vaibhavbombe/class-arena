@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api.js'
-import { errorMessage, saveSession } from '../session.js'
+import { errorMessage, isLoggedIn, saveSession } from '../session.js'
 import { buttonStyle, colors, errorStyle, formStyle, inputStyle, narrowPageStyle } from '../styles.js'
 
 // Teachers (and co-admins) land here from the invite email.
@@ -11,6 +11,7 @@ export default function AcceptInvite() {
   const [form, setForm] = useState({ name: '', password: '' })
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [alreadyLoggedIn] = useState(isLoggedIn)
   const navigate = useNavigate()
 
   function handleChange(event) {
@@ -37,6 +38,12 @@ export default function AcceptInvite() {
     <main style={narrowPageStyle}>
       <h1 style={{ color: colors.accent }}>Join your institute</h1>
       {!token && <p role="alert" style={errorStyle}>This invite link is missing its token.</p>}
+      {alreadyLoggedIn && (
+        <p style={{ color: colors.muted, fontSize: '0.85rem' }}>
+          Someone is already logged in on this browser. Joining will log them out in every tab.
+          To keep both accounts open, use a private window for this invite.
+        </p>
+      )}
       <form onSubmit={handleSubmit} style={formStyle}>
         <input name="name" value={form.name} placeholder="Your name" onChange={handleChange} required style={inputStyle} />
         <input name="password" type="password" value={form.password} placeholder="Choose a password (8+ characters)" onChange={handleChange} minLength={8} required style={inputStyle} />

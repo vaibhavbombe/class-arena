@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { watchOtherTabs } from './session.js'
 import AcceptInvite from './pages/AcceptInvite.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -7,6 +9,8 @@ import Signup from './pages/Signup.jsx'
 import StudentSignup from './pages/StudentSignup.jsx'
 
 export default function App() {
+  useEffect(watchOtherTabs, [])
+
   return (
     <BrowserRouter>
       <Routes>
