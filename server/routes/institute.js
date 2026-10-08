@@ -38,6 +38,9 @@ router.post('/invites', requireAuth, requireRole('admin'), async (req, res) => {
     return res.status(409).json({ error: 'This email already has an account' })
   }
 
+  // Re-inviting the same person replaces their pending invite, so old links stop working.
+  await Invite.deleteMany({ email, institutionId: req.institutionId, used: false })
+
   const token = crypto.randomBytes(24).toString('hex')
   await Invite.create({
     email,
