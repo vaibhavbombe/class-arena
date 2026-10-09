@@ -8,8 +8,9 @@ const { fingerprint } = require('./fingerprint')
 const SENDER_NAME = 'ClassArena'
 const TIMEOUT_MS = 10000
 
-// Dashboards make it easy to paste a stray space or quotes along with the key.
-const BREVO_API_KEY = (process.env.BREVO_API_KEY || '').trim().replace(/^["']|["']$/g, '')
+// Dashboards make it easy to paste stray spaces, quotes or invisible characters along
+// with the key. A real key is plain printable ASCII, so drop everything else.
+const BREVO_API_KEY = (process.env.BREVO_API_KEY || '').replace(/[^\x21-\x7e]/g, '').replace(/^["']|["']$/g, '')
 
 // The fingerprint is one-way, so it's safe to log. scripts/check-brevo-key.js prints
 // the same fingerprint, so you can tell whether the server has the key you tested.
