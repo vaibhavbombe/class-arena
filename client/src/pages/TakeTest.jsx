@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
+import AttemptReview from '../components/AttemptReview.jsx'
 import { errorMessage } from '../session.js'
 import { buttonStyle, colors, inputStyle, linkStyle, messageStyle, widePageStyle } from '../styles.js'
 import { StatusBadge, formatWhen, windowText } from '../testFormat.jsx'
@@ -173,10 +174,20 @@ export default function TakeTest({ me }) {
         {backLink}
         <h2>{outline.title}</h2>
         {message && <p role="status" style={messageStyle(message.ok)}>{message.text}</p>}
-        <p style={messageStyle(true)}>
-          Submitted {formatWhen(attempt.submittedAt)}{attempt.submittedBy === 'timeout' ? ' (automatically, when time ran out)' : ''}.
-        </p>
-        <p style={{ color: colors.muted, fontSize: '0.9rem' }}>Your score and the correct answers will appear here once results are available.</p>
+        {attempt.review ? (
+          <AttemptReview review={attempt.review} />
+        ) : (
+          <>
+            <p style={messageStyle(true)}>
+              Submitted {formatWhen(attempt.submittedAt)}{attempt.submittedBy === 'timeout' ? ' (automatically, when time ran out)' : ''}.
+            </p>
+            <p style={{ color: colors.muted, fontSize: '0.9rem' }}>
+              {attempt.closesAt
+                ? `Your score and the correct answers will appear here when the test closes (${formatWhen(attempt.closesAt)}), or earlier if your teacher releases them.`
+                : 'Your score and the correct answers will appear here when your teacher releases them.'}
+            </p>
+          </>
+        )}
       </div>
     )
   }

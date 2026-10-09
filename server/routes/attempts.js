@@ -7,11 +7,21 @@ const { findVisibleClass } = require('../lib/classAccess')
 const { testStatus } = require('../lib/testRules')
 const rules = require('../lib/attemptRules')
 const { finalizeAttempt } = require('../lib/finalizeAttempt')
+const { canSeeResults, reviewView } = require('../lib/results')
 
 // Mounted at /api/tests/:testId/attempt. Students take tests here; every time limit
 // is checked against the server's clock.
 const router = express.Router({ mergeParams: true })
 router.use(requireAuth, requireRole('student'))
+
+// The attempt as the student may see it: once submitted, the score and marked answers
+// are added only when results are visible (test closed, or released by the teacher).
+function viewFor(test, attempt, now) {
+  const view = rules.studentAttemptView(test, attempt, now)
+  if (attempt.status !== 'submitted') return view
+  const resultsVisible = canSeeResults(test, now)
+  return { ...view, resultsVisible, closesAt: test.closesAt, ...(resultsVisible && { review: reviewView(test, attempt) }) }
+}
 
 // A published test in a class the student is enrolled in, or null (answered with 404).
 async function findStudentTest(req) {
@@ -38,7 +48,7 @@ router.post('/', async (req, res) => {
   if (!test) return res.status(404).json({ error: 'Test not found' })
 
   const existing = await loadAttempt(req, test, now)
-  if (existing) return res.json(rules.studentAttemptView(test, existing, now))
+  if (existing) return res.json(viewFor(test, existing, now))
 
   const status = testStatus(test, now)
   if (status === 'upcoming') return res.status(409).json({ error: 'This test has not opened yet' })
@@ -55,12 +65,12 @@ router.post('/', async (req, res) => {
       answers: rules.emptyAnswers(test),
       ...rules.layoutFor(test),
     })
-    res.status(201).json(rules.studentAttemptView(test, attempt, now))
+    res.status(201).json(viewFor(test, attempt, now))
   } catch (err) {
     // Two "Start" requests at once: the unique index lets only one create; return that one.
     if (err.code !== 11000) throw err
     const attempt = await Attempt.findOne({ testId: test._id, studentId: req.userId })
-    res.json(rules.studentAttemptView(test, attempt, now))
+    res.json(viewFor(test, attempt, now))
   }
 })
 
@@ -70,7 +80,7 @@ router.get('/', async (req, res) => {
   if (!test) return res.status(404).json({ error: 'Test not found' })
   const attempt = await loadAttempt(req, test, now)
   if (!attempt) return res.status(404).json({ error: 'Not started' })
-  res.json(rules.studentAttemptView(test, attempt, now))
+  res.json(viewFor(test, attempt, now))
 })
 
 // Saves one or more answers: [{ index, selectedOptionIds } | { index, text }].
@@ -120,7 +130,7 @@ router.post('/submit', async (req, res) => {
     }
     attempt = await finalizeAttempt(attempt, test, 'student', now)
   }
-  res.json(rules.studentAttemptView(test, attempt, now))
+  res.json(viewFor(test, attempt, now))
 })
 
 module.exports = router

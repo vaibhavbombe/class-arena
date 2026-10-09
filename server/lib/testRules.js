@@ -1,3 +1,5 @@
+const { canSeeResults } = require('./results')
+
 // Pure rules for tests (no database): input validation, open/closed status and the
 // shapes sent to staff and students. Unit-tested in test/testRules.test.js.
 
@@ -122,6 +124,8 @@ function staffSummary(test, now) {
     closesAt: test.closesAt,
     publishedAt: test.publishedAt,
     updatedAt: test.updatedAt,
+    resultsReleasedAt: test.resultsReleasedAt || null,
+    resultsVisible: test.status === 'published' && canSeeResults(test, now),
     ...totals(test),
   }
 }
@@ -148,6 +152,7 @@ function studentOutline(test, now) {
     durationMinutes: test.durationMinutes,
     opensAt: test.opensAt,
     closesAt: test.closesAt,
+    resultsVisible: canSeeResults(test, now),
     ...totals(test),
   }
 }

@@ -11,6 +11,7 @@ import ResetPassword from './pages/ResetPassword.jsx'
 import Signup from './pages/Signup.jsx'
 import StudentSignup from './pages/StudentSignup.jsx'
 import TestPage from './pages/TestPage.jsx'
+import TestResults from './pages/TestResults.jsx'
 
 export default function App() {
   useEffect(watchOtherTabs, [])
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/classes/:id" element={<ClassDetail />} />
         <Route path="/questions" element={<QuestionBank />} />
         <Route path="/tests/:id" element={<TestPage />} />
+        <Route path="/tests/:id/results" element={<TestResults />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
