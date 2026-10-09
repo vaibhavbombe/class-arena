@@ -4,27 +4,12 @@
 // The password is typed into a hidden prompt, so it never ends up in shell history or logs.
 const path = require('path')
 require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true })
-const readline = require('readline')
 const bcrypt = require('bcrypt')
 const mongoose = require('mongoose')
 const User = require('../models/User')
 const RefreshToken = require('../models/RefreshToken')
 const { SALT_ROUNDS } = require('../routes/auth')
-
-function ask(question, { hidden = false } = {}) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true })
-  if (hidden) {
-    // Print the question, then swallow the echoed keystrokes.
-    rl._writeToOutput = (text) => {
-      if (text.includes(question)) rl.output.write(text)
-    }
-  }
-  return new Promise((resolve) => rl.question(question, (answer) => {
-    rl.close()
-    if (hidden) process.stdout.write('\n')
-    resolve(answer.trim())
-  }))
-}
+const { ask } = require('./prompt')
 
 async function main() {
   const dbFlag = process.argv.indexOf('--db')

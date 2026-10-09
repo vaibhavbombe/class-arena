@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer')
+const { fingerprint } = require('./fingerprint')
 
 // Two ways to send:
 // - Brevo's HTTP API when BREVO_API_KEY is set (production). Render's free tier
@@ -9,6 +10,14 @@ const TIMEOUT_MS = 10000
 
 // Dashboards make it easy to paste a stray space or quotes along with the key.
 const BREVO_API_KEY = (process.env.BREVO_API_KEY || '').trim().replace(/^["']|["']$/g, '')
+
+// The fingerprint is one-way, so it's safe to log. scripts/check-brevo-key.js prints
+// the same fingerprint, so you can tell whether the server has the key you tested.
+if (BREVO_API_KEY) {
+  console.log(`Email: Brevo API (key fingerprint ${fingerprint(BREVO_API_KEY)}, ${BREVO_API_KEY.length} chars)`)
+} else {
+  console.log('Email: Gmail SMTP (BREVO_API_KEY not set)')
+}
 
 // Brevo shows two kinds of key on the same page; only the API key works here.
 // The prefix isn't secret, so it's safe to name in the log.
