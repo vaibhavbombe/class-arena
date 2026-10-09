@@ -91,10 +91,8 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
   so a failure halfway can be retried, but nothing rolls back automatically.
 - Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
   httpOnly cookies would be safer.
-- Unit tests (`npm test` in `server/`, 36 tests) cover the pure logic: question validation, test rules,
-  grading, attempt rules (deadlines, grace period, shuffling, nothing answer-revealing sent to students)
-  and results statistics. API flows were checked with smoke scripts against a separate dev database;
-  those scripts are not in the repo yet, and there are no browser (end-to-end UI) tests.
+- There are no browser (end-to-end UI) tests; the UI has only been checked by hand. See **Testing** below
+  for what is covered.
 - Multi-select has no partial credit, and short answers are exact matches after normalising (no
   fuzzy matching or manual regrading yet).
 - The Render free tier sleeps when idle, so the first request after a while can take ~50 seconds.
@@ -110,6 +108,7 @@ copy .env.example .env   # then fill in the values
 npm install
 npm run dev              # http://localhost:5002
 npm test                 # unit tests (no database needed)
+npm run test:integration # API suites; needs a database whose name ends in -dev or -test
 
 cd ..\client
 copy .env.example .env   # VITE_API_URL=http://localhost:5002
@@ -127,6 +126,18 @@ Server environment variables:
 | `BREVO_API_KEY`, `MAIL_FROM` | Production email via Brevo's HTTP API (`MAIL_FROM` must be a verified sender) |
 | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Local email via Gmail SMTP, used when `BREVO_API_KEY` is not set |
 | `PORT` | Defaults to 5002 |
+
+## Testing
+- **Unit tests** (`npm test`, 36 tests, Node's built-in runner): the pure logic — question validation,
+  test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
+  students contains answers) and results statistics.
+- **Integration tests** (`npm run test:integration`, 10 suites, 144 checks): start the API on a spare
+  port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
+  tenant isolation, invites, password reset and rules, member management, question bank, tests,
+  taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
+  race between autosaves and submit. The runner refuses databases whose names don't end in `-dev`
+  or `-test`, so it can't touch production. They leave their test data behind in that database.
+- Not covered: the React UI, load/performance, and email delivery itself.
 
 ## API
 | Method | Path | Who |

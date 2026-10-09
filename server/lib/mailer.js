@@ -84,6 +84,8 @@ async function sendWithGmail({ to, subject, text }) {
 
 // Returns { sent, reason } instead of throwing: a failed email shouldn't fail the request.
 async function sendMail(message) {
+  // The integration tests set this so they never send real email.
+  if (process.env.EMAIL_DISABLED === 'true') return { sent: false, reason: 'Email is disabled in this environment.' }
   try {
     await (BREVO_API_KEY ? sendWithBrevo(message) : sendWithGmail(message))
     return { sent: true }
