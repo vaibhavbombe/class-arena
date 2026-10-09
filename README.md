@@ -1,8 +1,8 @@
 # ClassArena
 
 A multi-tenant classroom and competition platform for institutes. **Work in progress:**
-Phase 1 (accounts, roles, classes) is built. Phase 2 is in progress: the question bank and test
-authoring work; taking tests (timer, auto-grading) is next. Live quizzes, coding contests and AI features are planned
+Phase 1 (accounts, roles, classes) is built. Phase 2 is in progress: question bank, test authoring
+and taking timed tests with server-side grading work; showing results is next. Live quizzes, coding contests and AI features are planned
 and do not exist yet.
 
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
@@ -22,8 +22,9 @@ first request after it has been idle can take ~50 seconds)
   see the whole institute. Students can't reach it at all. Code questions come with the judge in Phase 4.
 - **Tests** (authoring): a teacher builds a draft from bank questions with points, a duration, optional
   open/close times and shuffle options, then publishes it to a class. Students see only an outline
-  (title, instructions, timing, question count, total points) until they start. Taking a test is not
-  built yet.
+  (title, instructions, timing, question count, total points) until they start.
+- **Taking tests** (students): start, answer with autosave and a countdown, submit. Graded on the server.
+  Students see "Submitted" for now; scores and answer review come in the next step.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
 
 ## Stack
@@ -48,6 +49,23 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
   can't change the test, so grading always matches what students saw. Questions, points and timing
   lock on publish; title, instructions and closing time can still change (e.g. to extend a deadline).
 - **Test status (draft / upcoming / open / closed) is computed from the server's clock**, never the browser's.
+- **The timer is decided by the server.** Starting stores a deadline (start + duration, capped at the
+  closing time); the browser only displays it, corrected for its own clock offset. There's no
+  background job: any request that touches an attempt after its deadline submits it with the answers
+  saved so far, so closing the browser doesn't escape the deadline. Saves get a 5-second grace
+  period for network delay. Changing a test's closing time doesn't move deadlines already handed out.
+- **The answer key never reaches the browser.** Students get questions without correct flags,
+  accepted answers or explanations; question and option order can be shuffled per student
+  (crypto-random, stored so a reload shows the same order).
+- **Autosave is per answer** (an atomic `$set` of one array element). Each save bumps a `revision`,
+  and submit only finalises if the revision it graded is still current; otherwise it re-grades. A
+  test that fires saves and a submit at the same time checks the stored score always matches the
+  stored answers.
+- **One attempt per student per test** is a unique database index, so double-clicking Start can't
+  create two attempts. A test that students have started can't be deleted.
+- **Grading:** multiple choice is right or wrong; multi-select is all-or-nothing (the exact set of
+  correct options; no partial credit yet); short answers match after trimming, collapsing spaces and
+  (unless the question is case-sensitive) ignoring case.
 - **Password rules are enforced on the server** (8–72 characters with upper and lower case, a number
   and a special character) wherever a password is set; the form's live checklist is only a hint.
   Login doesn't apply them, so older accounts still work. The 72 cap is because bcrypt ignores
@@ -67,7 +85,8 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
 - Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
   httpOnly cookies would be safer.
 - Automated tests are thin so far: unit tests (`npm test` in `server/`) cover question validation
-  and test rules (settings, open/closed status, and that the student outline never includes questions).
+  test rules, grading and attempt rules (deadlines, grace period, shuffling, and that what students
+  receive never includes answers).
   API flows were checked with smoke scripts run against a separate dev database; those scripts
   are not in the repo yet.
 - The Render free tier sleeps when idle, so the first request after a while can take ~50 seconds.
@@ -128,6 +147,9 @@ Server environment variables:
 | GET | `/api/tests/:id` | staff (full, with answers), students (outline only) |
 | PUT / DELETE | `/api/tests/:id` | class teacher, admin |
 | POST | `/api/tests/:id/publish` | class teacher, admin |
+| POST / GET | `/api/tests/:id/attempt` | student in the class (start or resume / current state) |
+| PUT | `/api/tests/:id/attempt/answers` | student (autosave) |
+| POST | `/api/tests/:id/attempt/submit` | student |
 
 ## Roadmap
 2. Question bank and timed tests with auto-grading

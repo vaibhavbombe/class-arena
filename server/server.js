@@ -14,6 +14,8 @@ app.get('/api/health', (req, res) => res.json({ ok: true, commit: process.env.RE
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))
+// Before /api/tests, so attempt URLs never pass through the tests router first.
+app.use('/api/tests/:testId/attempt', require('./routes/attempts'))
 app.use('/api/tests', require('./routes/tests'))
 app.use('/api', require('./routes/institute'))
 
