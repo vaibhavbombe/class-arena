@@ -1,13 +1,14 @@
 # ClassArena
 
 A multi-tenant classroom and competition platform for institutes. **Work in progress:**
-Phase 1 (accounts, roles, classes) is built. Tests, live quizzes, coding contests and
-AI features are planned and do not exist yet.
+Phase 1 (accounts, roles, classes) is built. Phase 2 is in progress: the question bank works;
+timed tests and auto-grading are next. Live quizzes, coding contests and AI features are planned
+and do not exist yet.
 
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
 first request after it has been idle can take ~50 seconds)
 
-## What works today (Phase 1)
+## What works today
 - **Institutes as tenants.** Signing up creates an institute and makes you its admin.
 - **Three roles.**
   - *Admin*: sees every member and class in the institute, invites teachers or co-admins by email,
@@ -16,6 +17,9 @@ first request after it has been idle can take ~50 seconds)
   - *Student*: signs up with a 6-character class join code and can join more classes from the dashboard.
 - **Auth:** 15-minute JWT access tokens plus 30-day refresh tokens that rotate on every use,
   with an axios interceptor that refreshes silently on a 401.
+- **Question bank** (teachers and admins): multiple choice, multi-select and short-answer questions
+  with tags, difficulty, an explanation, search and filters. Teachers see their own questions; admins
+  see the whole institute. Students can't reach it at all. Code questions come with the judge in Phase 4.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
 
 ## Stack
@@ -53,8 +57,9 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
   so a failure halfway can be retried, but nothing rolls back automatically.
 - Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
   httpOnly cookies would be safer.
-- No automated test suite in the repo yet. Phase 1 was checked with manual API smoke scripts
-  and by clicking through the UI.
+- Automated tests are thin so far: unit tests (`npm test` in `server/`) cover question validation.
+  API flows were checked with smoke scripts run against a separate dev database; those scripts
+  are not in the repo yet.
 - The Render free tier sleeps when idle, so the first request after a while can take ~50 seconds.
 - Invite emails are sent from a personal address (Brevo free tier, 300/day) and can land in spam.
   If sending fails, the admin still gets the invite link to share by hand.
@@ -67,6 +72,7 @@ cd server
 copy .env.example .env   # then fill in the values
 npm install
 npm run dev              # http://localhost:5002
+npm test                 # unit tests (no database needed)
 
 cd ..\client
 copy .env.example .env   # VITE_API_URL=http://localhost:5002
@@ -85,7 +91,7 @@ Server environment variables:
 | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Local email via Gmail SMTP, used when `BREVO_API_KEY` is not set |
 | `PORT` | Defaults to 5002 |
 
-## API (Phase 1)
+## API
 | Method | Path | Who |
 | --- | --- | --- |
 | POST | `/api/auth/signup` | anyone: creates institute + admin |
@@ -104,6 +110,9 @@ Server environment variables:
 | DELETE | `/api/classes/:id/students/:studentId` | class teacher, admin |
 | PATCH | `/api/classes/:id/teacher` | admin |
 | DELETE | `/api/members/:id` | admin (not yourself; teachers must have no classes) |
+| GET / POST | `/api/questions` (`?type=&tag=&q=`) | teacher (own), admin (all) |
+| GET | `/api/questions/tags` | teacher, admin |
+| GET / PUT / DELETE | `/api/questions/:id` | owner, admin |
 
 ## Roadmap
 2. Question bank and timed tests with auto-grading
