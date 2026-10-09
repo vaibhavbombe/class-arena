@@ -24,7 +24,7 @@ export default function MembersPanel() {
     setSending(true)
     try {
       const response = await api.post('/api/invites', { email: inviteEmail, role: inviteRole })
-      setInviteMsg({ ok: response.data.emailSent, text: response.data.message, link: response.data.inviteUrl })
+      setInviteMsg({ ok: response.data.emailSent, text: response.data.message, reason: response.data.emailError, link: response.data.inviteUrl })
       setInviteEmail('')
     } catch (requestError) {
       setInviteMsg({ ok: false, text: errorMessage(requestError, 'Could not send invite.') })
@@ -89,6 +89,7 @@ export default function MembersPanel() {
       {inviteMsg && (
         <p style={messageStyle(inviteMsg.ok)}>
           {inviteMsg.text}
+          {inviteMsg.reason && <><br /><span>Reason: {inviteMsg.reason}</span></>}
           {inviteMsg.link && (
             <>
               <br /><span style={{ color: colors.muted }}>Link: {inviteMsg.link}</span>{' '}
