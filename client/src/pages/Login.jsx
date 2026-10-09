@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage, saveSession } from '../session.js'
-import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle } from '../styles.js'
+import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, messageStyle, narrowPageStyle } from '../styles.js'
 
 export default function Login() {
+  const [searchParams] = useSearchParams()
+  const justReset = searchParams.get('reset') === '1'
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -34,12 +36,16 @@ export default function Login() {
     <main style={narrowPageStyle}>
       <h1 style={{ color: colors.accent }}>ClassArena</h1>
       <h2 style={{ fontSize: '1rem', color: colors.muted }}>Log in</h2>
+      {justReset && <p style={messageStyle(true)}>Password updated. Log in with your new password.</p>}
       <form onSubmit={handleSubmit} style={formStyle}>
         <input name="email" type="email" value={form.email} placeholder="Email" onChange={handleChange} required style={inputStyle} />
         <input name="password" type="password" value={form.password} placeholder="Password" onChange={handleChange} required style={inputStyle} />
         <button type="submit" disabled={submitting} style={buttonStyle}>{submitting ? 'Logging in…' : 'Log in'}</button>
         {error && <p role="alert" style={errorStyle}>{error}</p>}
       </form>
+      <p style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>
+        <Link to="/forgot-password" style={linkStyle}>Forgot password?</Link>
+      </p>
       <p style={{ marginTop: '1rem', fontSize: '0.85rem' }}>
         <Link to="/join" style={linkStyle}>Student? Join with a class code</Link>
       </p>

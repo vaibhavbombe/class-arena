@@ -15,10 +15,11 @@ first request after it has been idle can take ~50 seconds)
   - *Student*: signs up with a 6-character class join code and can join more classes from the dashboard.
 - **Auth:** 15-minute JWT access tokens plus 30-day refresh tokens that rotate on every use,
   with an axios interceptor that refreshes silently on a 401.
+- **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
 
 ## Stack
 React 18 + Vite, React Router, axios · Node.js + Express 5, Mongoose (MongoDB Atlas),
-bcrypt, jsonwebtoken, nodemailer (Gmail) · Vercel (client), Render (server)
+bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · Vercel (client), Render (server)
 
 ## Design decisions
 - **The tenant comes from the token, never the request.** `institutionId` is signed into the
@@ -33,6 +34,10 @@ bcrypt, jsonwebtoken, nodemailer (Gmail) · Vercel (client), Render (server)
 - **Join codes** use an alphabet without 0/O/1/I/L (easy to read off a board) and are globally unique,
   because a new student signs up with only the code. Staff can regenerate a leaked code.
 - **Request fields must be strings**, which blocks Mongo operator injection like `{"$gt": ""}`.
+- **Password reset doesn't reveal who has an account.** "Forgot password" gives the same answer for
+  any email and sends the email in the background, so response time doesn't leak it either. Only a
+  SHA-256 hash of the reset token is stored; links are single-use, expire in 30 minutes, are limited
+  to one per account per minute, and a successful reset signs out every existing session.
 
 ## Known limitations
 - No rate limiting yet, so login and join codes could be brute-forced.
@@ -78,6 +83,7 @@ Server environment variables:
 | POST | `/api/auth/signup` | anyone: creates institute + admin |
 | POST | `/api/auth/student-signup` | anyone with a join code |
 | POST | `/api/auth/login`, `/refresh`, `/logout` | anyone |
+| POST | `/api/auth/forgot-password`, `/reset-password` | anyone |
 | GET | `/api/me` | logged in |
 | GET | `/api/members?role=` | admin |
 | POST | `/api/invites` | admin |
