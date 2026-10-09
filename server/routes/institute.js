@@ -53,16 +53,18 @@ router.post('/invites', requireAuth, requireRole('admin'), async (req, res) => {
 
   const institution = await Institution.findById(req.institutionId)
   const inviteUrl = `${process.env.CLIENT_URL}/accept-invite?token=${token}`
-  const emailSent = await sendMail({
+  const delivery = await sendMail({
     to: email,
     subject: `You've been invited to ${institution.name} on ClassArena`,
     text: `You've been invited to join ${institution.name} as a ${role}. Accept here: ${inviteUrl}`,
   })
 
-  // The admin sees the link too, so they can share it by hand if the email doesn't arrive.
+  // The admin sees the link too, so they can share it by hand if the email doesn't arrive,
+  // and a short reason so a misconfigured email service is easy to spot.
   res.status(201).json({
-    message: emailSent ? 'Invite sent' : 'Invite created, but the email could not be sent. Share the link manually.',
-    emailSent,
+    message: delivery.sent ? 'Invite sent' : 'Invite created, but the email could not be sent. Share the link manually.',
+    emailSent: delivery.sent,
+    ...(!delivery.sent && { emailError: delivery.reason }),
     inviteUrl,
   })
 })

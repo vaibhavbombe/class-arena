@@ -42,22 +42,47 @@ async function sendWithBrevo({ to, subject, text }) {
   })
   if (!response.ok) {
     // Brevo's error body says what's wrong (bad key, unverified sender) and has no secrets.
-    throw new Error(`Brevo ${response.status}: ${await response.text()}`)
+    const body = await response.text()
+    const err = new Error(`Brevo ${response.status}: ${body}`)
+    err.reason = brevoReason(response.status, body)
+    throw err
   }
+}
+
+// Short, admin-facing explanations. The full provider response stays in the server log.
+function brevoReason(status, body) {
+  const text = body.toLowerCase()
+  if (status === 401 && text.includes('ip')) return "The email service blocked this server's IP address (Brevo > Security > Authorised IPs)."
+  if (status === 401) return 'The email service rejected the API key. Check BREVO_API_KEY (it starts with xkeysib-).'
+  if (status === 400 && text.includes('sender')) return 'The sender address (MAIL_FROM) is not verified in Brevo.'
+  if (status === 403) return 'The Brevo account is not allowed to send yet (it may still be under review).'
+  if (status === 429) return 'The daily email limit has been reached.'
+  return `The email service returned an error (${status}).`
+}
+
+function smtpReason(err) {
+  if (err.code === 'EAUTH') return 'The email login was rejected (check the Gmail app password).'
+  if (['ETIMEDOUT', 'ECONNREFUSED', 'ESOCKET', 'ECONNECTION'].includes(err.code)) {
+    return 'Could not reach the email server. This host may block outgoing email; set BREVO_API_KEY.'
+  }
+  return 'The email server returned an error.'
 }
 
 async function sendWithGmail({ to, subject, text }) {
   await gmail.sendMail({ from: `"${SENDER_NAME}" <${process.env.GMAIL_USER}>`, to, subject, text })
 }
 
-// Returns true/false instead of throwing: a failed email shouldn't fail the request.
+// Returns { sent, reason } instead of throwing: a failed email shouldn't fail the request.
 async function sendMail(message) {
   try {
     await (BREVO_API_KEY ? sendWithBrevo(message) : sendWithGmail(message))
-    return true
+    return { sent: true }
   } catch (err) {
     console.error('Email failed:', err.code || err.name || '', err.message)
-    return false
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+      return { sent: false, reason: 'The email service did not respond in time.' }
+    }
+    return { sent: false, reason: err.reason || smtpReason(err) }
   }
 }
 
