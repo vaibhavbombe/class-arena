@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
-import { cellStyle, codeStyle, colors, ghostButtonStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
+import { cellStyle, codeStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
 
 export default function ClassDetail() {
   const { id } = useParams()
@@ -12,12 +12,58 @@ export default function ClassDetail() {
   const [cls, setCls] = useState(null)
   const [error, setError] = useState('')
   const [codeMsg, setCodeMsg] = useState(null)
+  const [manageMsg, setManageMsg] = useState(null)
+  const [staff, setStaff] = useState([])
+  const navigate = useNavigate()
 
-  useEffect(() => {
+  function loadClass() {
     api.get(`/api/classes/${id}`)
       .then((response) => setCls(response.data))
       .catch((requestError) => setError(errorMessage(requestError, 'Could not load this class.')))
-  }, [id])
+  }
+
+  useEffect(loadClass, [id])
+
+  // Admins can hand the class to another teacher; they need the list of staff for that.
+  useEffect(() => {
+    if (me?.user.role !== 'admin') return
+    api.get('/api/members')
+      .then((response) => setStaff(response.data.filter((member) => member.role !== 'student')))
+      .catch(() => setStaff([]))
+  }, [me])
+
+  async function removeStudent(student) {
+    if (!window.confirm(`Remove ${student.name} from this class? Their account stays; they can rejoin with the join code.`)) return
+    try {
+      await api.delete(`/api/classes/${id}/students/${student.id}`)
+      setManageMsg({ ok: true, text: `${student.name} was removed from the class.` })
+      loadClass()
+    } catch (requestError) {
+      setManageMsg({ ok: false, text: errorMessage(requestError, 'Could not remove the student.') })
+    }
+  }
+
+  async function changeTeacher(event) {
+    const teacherId = event.target.value
+    if (!teacherId || teacherId === cls.teacher?.id) return
+    try {
+      const response = await api.patch(`/api/classes/${id}/teacher`, { teacherId })
+      setCls((current) => ({ ...current, teacher: response.data.teacher }))
+      setManageMsg({ ok: true, text: `${response.data.teacher.name} now teaches this class.` })
+    } catch (requestError) {
+      setManageMsg({ ok: false, text: errorMessage(requestError, 'Could not change the teacher.') })
+    }
+  }
+
+  async function deleteClass() {
+    if (!window.confirm(`Delete "${cls.name}"? All ${cls.studentCount} students will be removed from it. This can't be undone.`)) return
+    try {
+      await api.delete(`/api/classes/${id}`)
+      navigate('/dashboard')
+    } catch (requestError) {
+      setManageMsg({ ok: false, text: errorMessage(requestError, 'Could not delete the class.') })
+    }
+  }
 
   async function regenerateCode() {
     if (!window.confirm('Replace the join code? The old code will stop working. Students already in the class stay in it.')) return
@@ -68,6 +114,7 @@ export default function ClassDetail() {
                         <th style={cellStyle}>Name</th>
                         <th style={cellStyle}>Email</th>
                         <th style={cellStyle}>Joined</th>
+                        <th style={cellStyle}><span style={{ position: 'absolute', left: '-9999px' }}>Actions</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -76,12 +123,32 @@ export default function ClassDetail() {
                           <td style={cellStyle}>{student.name}</td>
                           <td style={{ ...cellStyle, color: colors.muted }}>{student.email}</td>
                           <td style={{ ...cellStyle, color: colors.muted }}>{new Date(student.joinedAt).toLocaleDateString()}</td>
+                          <td style={{ ...cellStyle, textAlign: 'right' }}>
+                            <button onClick={() => removeStudent(student)} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>Remove</button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
+
+              <h3 style={sectionTitleStyle}>Manage class</h3>
+              <div style={inlineFormStyle}>
+                {me.user.role === 'admin' && (
+                  <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.85rem' }}>
+                    Teacher
+                    <select value={cls.teacher?.id || ''} onChange={changeTeacher} style={inputStyle}>
+                      {!cls.teacher && <option value="">(no teacher)</option>}
+                      {staff.map((member) => (
+                        <option key={member._id} value={member._id}>{member.name} ({member.role})</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <button onClick={deleteClass} style={{ ...ghostButtonStyle, color: colors.accent, borderColor: colors.accent }}>Delete class</button>
+              </div>
+              {manageMsg && <p role="status" style={messageStyle(manageMsg.ok)}>{manageMsg.text}</p>}
             </>
           )}
 

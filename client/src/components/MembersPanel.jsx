@@ -4,19 +4,37 @@ import { errorMessage } from '../session.js'
 import { buttonStyle, cellStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, messageStyle, sectionTitleStyle } from '../styles.js'
 
 // Admin only: everyone in the institute, plus the teacher invite form.
-export default function MembersPanel() {
+export default function MembersPanel({ currentUserId }) {
   const [members, setMembers] = useState([])
   const [roleFilter, setRoleFilter] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('teacher')
   const [inviteMsg, setInviteMsg] = useState(null)
   const [sending, setSending] = useState(false)
+  const [removeMsg, setRemoveMsg] = useState(null)
 
-  useEffect(() => {
+  function loadMembers() {
     api.get('/api/members', { params: roleFilter ? { role: roleFilter } : {} })
       .then((response) => setMembers(response.data))
       .catch(() => setMembers([]))
-  }, [roleFilter])
+  }
+
+  useEffect(loadMembers, [roleFilter])
+
+  async function removeMember(member) {
+    const consequence = member.role === 'student'
+      ? 'They will be removed from all their classes and signed out.'
+      : 'They will be signed out and lose access to this institute.'
+    if (!window.confirm(`Remove ${member.name} (${member.role})? ${consequence} This can't be undone.`)) return
+    setRemoveMsg(null)
+    try {
+      const response = await api.delete(`/api/members/${member._id}`)
+      setRemoveMsg({ ok: true, text: response.data.message })
+      loadMembers()
+    } catch (requestError) {
+      setRemoveMsg({ ok: false, text: errorMessage(requestError, 'Could not remove this member.') })
+    }
+  }
 
   async function handleInvite(event) {
     event.preventDefault()
@@ -60,6 +78,7 @@ export default function MembersPanel() {
               <th style={cellStyle}>Name</th>
               <th style={cellStyle}>Email</th>
               <th style={cellStyle}>Role</th>
+              <th style={cellStyle}><span style={{ position: 'absolute', left: '-9999px' }}>Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -68,11 +87,19 @@ export default function MembersPanel() {
                 <td style={cellStyle}>{member.name}</td>
                 <td style={{ ...cellStyle, color: colors.muted }}>{member.email}</td>
                 <td style={{ ...cellStyle, color: colors.teal }}>{member.role}</td>
+                <td style={{ ...cellStyle, textAlign: 'right' }}>
+                  {member._id === currentUserId ? (
+                    <span style={{ color: colors.muted }}>you</span>
+                  ) : (
+                    <button onClick={() => removeMember(member)} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>Remove</button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {removeMsg && <p role="status" style={messageStyle(removeMsg.ok)}>{removeMsg.text}</p>}
 
       <h3 style={{ fontSize: '0.9rem', marginTop: '1.5rem' }}>Invite a teacher</h3>
       <form onSubmit={handleInvite} style={inlineFormStyle}>
