@@ -137,4 +137,45 @@ router.post('/:id/join-code', requireRole('teacher', 'admin'), async (req, res) 
   res.json({ joinCode: cls.joinCode })
 })
 
+// Admin hands a class to another teacher (e.g. before removing the current one).
+router.patch('/:id/teacher', requireRole('admin'), async (req, res) => {
+  if (rejectInvalid(res, req.body, ['teacherId'])) return
+  const cls = await findVisibleClass(req, req.params.id)
+  if (!cls) return res.status(404).json({ error: 'Class not found' })
+
+  // The new teacher must be staff in the same institute.
+  const teacher = mongoose.isValidObjectId(req.body.teacherId) && await User.findOne({
+    _id: req.body.teacherId,
+    institutionId: req.institutionId,
+    role: { $in: ['teacher', 'admin'] },
+  }).select('name')
+  if (!teacher) return res.status(400).json({ error: 'Pick a teacher or admin from your institute' })
+
+  cls.teacherId = teacher._id
+  await cls.save()
+  res.json(classSummary(cls, { teacher }))
+})
+
+// Staff remove one student from a class. The student's account stays.
+router.delete('/:id/students/:studentId', requireRole('teacher', 'admin'), async (req, res) => {
+  const cls = await findVisibleClass(req, req.params.id)
+  if (!cls) return res.status(404).json({ error: 'Class not found' })
+  if (!mongoose.isValidObjectId(req.params.studentId)) return res.status(404).json({ error: 'Student not found in this class' })
+
+  const { deletedCount } = await Enrollment.deleteOne({ classId: cls._id, studentId: req.params.studentId })
+  if (!deletedCount) return res.status(404).json({ error: 'Student not found in this class' })
+  res.json({ message: 'Student removed from the class' })
+})
+
+// The class's teacher or an admin deletes it. Enrollments go first, then the class,
+// so a failure halfway leaves nothing pointing at a missing class.
+router.delete('/:id', requireRole('teacher', 'admin'), async (req, res) => {
+  const cls = await findVisibleClass(req, req.params.id)
+  if (!cls) return res.status(404).json({ error: 'Class not found' })
+
+  await Enrollment.deleteMany({ classId: cls._id })
+  await Class.deleteOne({ _id: cls._id })
+  res.json({ message: `"${cls.name}" was deleted` })
+})
+
 module.exports = router

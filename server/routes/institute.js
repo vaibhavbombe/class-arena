@@ -1,9 +1,14 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
 const crypto = require('crypto')
+const mongoose = require('mongoose')
 const User = require('../models/User')
 const Institution = require('../models/Institution')
 const Invite = require('../models/Invite')
+const Class = require('../models/Class')
+const Enrollment = require('../models/Enrollment')
+const RefreshToken = require('../models/RefreshToken')
+const PasswordReset = require('../models/PasswordReset')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { authResponse, publicUser } = require('../lib/tokens')
 const { rejectInvalid } = require('../lib/validate')
@@ -25,6 +30,32 @@ router.get('/members', requireAuth, requireRole('admin'), async (req, res) => {
   if (User.ROLES.includes(req.query.role)) filter.role = req.query.role
   const members = await User.find(filter).select('-passwordHash').sort({ role: 1, name: 1 })
   res.json(members)
+})
+
+// Removes a member of the caller's institute. Deletes are ordered so the user goes
+// last: if something fails halfway, the admin can simply retry.
+router.delete('/members/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Member not found' })
+  const member = await User.findOne({ _id: req.params.id, institutionId: req.institutionId })
+  if (!member) return res.status(404).json({ error: 'Member not found' })
+
+  // Keeps an institute from ending up with no admin.
+  if (member._id.toString() === req.userId) {
+    return res.status(400).json({ error: "You can't remove yourself" })
+  }
+  // A teacher's classes would be left without a teacher (and their students stranded).
+  const ownedClasses = await Class.countDocuments({ institutionId: req.institutionId, teacherId: member._id })
+  if (ownedClasses) {
+    return res.status(409).json({
+      error: `${member.name} still teaches ${ownedClasses} class${ownedClasses > 1 ? 'es' : ''}. Give them to another teacher or delete them first.`,
+    })
+  }
+
+  await Enrollment.deleteMany({ institutionId: req.institutionId, studentId: member._id })
+  await RefreshToken.deleteMany({ userId: member._id })
+  await PasswordReset.deleteMany({ userId: member._id })
+  await User.deleteOne({ _id: member._id })
+  res.json({ message: `${member.name} was removed` })
 })
 
 // Admins invite teachers (or co-admins). Students never need an invite.

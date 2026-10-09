@@ -12,7 +12,7 @@ export default function Dashboard() {
     <div style={widePageStyle}>
       <AppHeader me={me} />
       <ClassesPanel role={me.user.role} />
-      {me.user.role === 'admin' && <MembersPanel />}
+      {me.user.role === 'admin' && <MembersPanel currentUserId={me.user.id} />}
     </div>
   )
 }

@@ -10,8 +10,9 @@ first request after it has been idle can take ~50 seconds)
 ## What works today (Phase 1)
 - **Institutes as tenants.** Signing up creates an institute and makes you its admin.
 - **Three roles.**
-  - *Admin*: sees every member and class in the institute, invites teachers or co-admins by email.
-  - *Teacher*: creates classes, sees join codes and rosters for their own classes.
+  - *Admin*: sees every member and class in the institute, invites teachers or co-admins by email,
+    removes members and hands a class to another teacher.
+  - *Teacher*: creates and deletes classes, sees join codes and rosters, removes students from a class.
   - *Student*: signs up with a 6-character class join code and can join more classes from the dashboard.
 - **Auth:** 15-minute JWT access tokens plus 30-day refresh tokens that rotate on every use,
   with an axios interceptor that refreshes silently on a 401.
@@ -47,7 +48,9 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
 ## Known limitations
 - No rate limiting yet, so login and join codes could be brute-forced.
 - One email address can belong to only one institute.
-- Students can't leave a class and staff can't remove them; classes can't be edited or deleted.
+- Students can't leave a class themselves, and classes can't be renamed yet.
+- Removing a member or deleting a class runs several deletes without a transaction; they're ordered
+  so a failure halfway can be retried, but nothing rolls back automatically.
 - Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
   httpOnly cookies would be safer.
 - No automated test suite in the repo yet. Phase 1 was checked with manual API smoke scripts
@@ -97,6 +100,10 @@ Server environment variables:
 | POST | `/api/classes/join` | student |
 | GET | `/api/classes/:id` | anyone who can see the class |
 | POST | `/api/classes/:id/join-code` | class teacher, admin |
+| DELETE | `/api/classes/:id` | class teacher, admin |
+| DELETE | `/api/classes/:id/students/:studentId` | class teacher, admin |
+| PATCH | `/api/classes/:id/teacher` | admin |
+| DELETE | `/api/members/:id` | admin (not yourself; teachers must have no classes) |
 
 ## Roadmap
 2. Question bank and timed tests with auto-grading
