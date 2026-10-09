@@ -2,6 +2,7 @@ const express = require('express')
 const mongoose = require('mongoose')
 const Test = require('../models/Test')
 const Question = require('../models/Question')
+const Attempt = require('../models/Attempt')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { findVisibleClass } = require('../lib/classAccess')
 const rules = require('../lib/testRules')
@@ -38,7 +39,26 @@ router.get('/', async (req, res) => {
   const filter = { institutionId: req.institutionId, classId: cls._id }
   if (!isStaff(req)) filter.status = 'published'
   const tests = await Test.find(filter).sort({ createdAt: -1 })
-  res.json(tests.map((test) => (isStaff(req) ? rules.staffSummary(test, now) : rules.studentOutline(test, now))))
+  if (isStaff(req)) {
+    const counts = await Attempt.aggregate([
+      { $match: { institutionId: new mongoose.Types.ObjectId(req.institutionId), testId: { $in: tests.map((test) => test._id) } } },
+      { $group: { _id: '$testId', started: { $sum: 1 }, submitted: { $sum: { $cond: [{ $eq: ['$status', 'submitted'] }, 1, 0] } } } },
+    ])
+    const countById = new Map(counts.map((c) => [c._id.toString(), { started: c.started, submitted: c.submitted }]))
+    return res.json(tests.map((test) => ({ ...rules.staffSummary(test, now), attempts: countById.get(test._id.toString()) || { started: 0, submitted: 0 } })))
+  }
+
+  // Students also see where they are with each test.
+  const mine = await Attempt.find({ institutionId: req.institutionId, studentId: req.userId, testId: { $in: tests.map((test) => test._id) } })
+    .select('testId status deadline submittedAt')
+  const mineById = new Map(mine.map((attempt) => [attempt.testId.toString(), attempt]))
+  res.json(tests.map((test) => {
+    const attempt = mineById.get(test._id.toString())
+    return {
+      ...rules.studentOutline(test, now),
+      myAttempt: attempt ? { status: attempt.status, deadline: attempt.deadline, submittedAt: attempt.submittedAt } : null,
+    }
+  }))
 })
 
 // Creates an empty draft in a class the caller teaches (or any class, for admins).
@@ -119,6 +139,9 @@ router.post('/:id/publish', requireRole('teacher', 'admin'), async (req, res) =>
 router.delete('/:id', requireRole('teacher', 'admin'), async (req, res) => {
   const test = await findVisibleTest(req, req.params.id)
   if (!test) return res.status(404).json({ error: 'Test not found' })
+  // Students' work would be lost; a test that has been taken stays.
+  const taken = await Attempt.countDocuments({ testId: test._id })
+  if (taken) return res.status(409).json({ error: `${taken} student${taken > 1 ? 's have' : ' has'} already started this test, so it can't be deleted` })
   await Test.deleteOne({ _id: test._id })
   res.json({ message: `"${test.title}" was deleted` })
 })

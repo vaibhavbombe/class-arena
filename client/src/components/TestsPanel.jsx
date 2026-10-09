@@ -5,6 +5,21 @@ import { errorMessage } from '../session.js'
 import { buttonStyle, cellStyle, colors, linkStyle, messageStyle, sectionTitleStyle } from '../styles.js'
 import { StatusBadge, windowText } from '../testFormat.jsx'
 
+function StaffProgress({ test }) {
+  if (test.status === 'draft') return <span style={{ color: colors.muted }}>—</span>
+  const { started, submitted } = test.attempts
+  return <span style={{ color: colors.muted }}>{submitted}{started > submitted ? ` (+${started - submitted} in progress)` : ''}</span>
+}
+
+function MyProgress({ test }) {
+  const attempt = test.myAttempt
+  if (attempt?.status === 'submitted') return <span style={{ color: colors.teal }}>Submitted</span>
+  if (attempt) return <Link to={`/tests/${test.id}`} style={{ ...linkStyle, fontWeight: 'bold' }}>Continue</Link>
+  if (test.status === 'open') return <Link to={`/tests/${test.id}`} style={{ ...linkStyle, fontWeight: 'bold' }}>Start</Link>
+  if (test.status === 'closed') return <span style={{ color: colors.accent }}>Missed</span>
+  return <span style={{ color: colors.muted }}>Not open yet</span>
+}
+
 // Tests in a class. Staff see drafts too and can create tests; students see published ones.
 export default function TestsPanel({ classId, isStaff }) {
   const [tests, setTests] = useState([])
@@ -49,18 +64,18 @@ export default function TestsPanel({ classId, isStaff }) {
                 <th style={cellStyle}>Questions</th>
                 <th style={cellStyle}>Duration</th>
                 <th style={cellStyle}>When</th>
+                <th style={cellStyle}>{isStaff ? 'Submitted' : 'You'}</th>
               </tr>
             </thead>
             <tbody>
               {tests.map((test) => (
                 <tr key={test.id}>
-                  <td style={cellStyle}>
-                    {isStaff ? <Link to={`/tests/${test.id}`} style={linkStyle}>{test.title}</Link> : test.title}
-                  </td>
+                  <td style={cellStyle}><Link to={`/tests/${test.id}`} style={linkStyle}>{test.title}</Link></td>
                   <td style={cellStyle}><StatusBadge status={test.status} /></td>
                   <td style={{ ...cellStyle, color: colors.muted }}>{test.questionCount} · {test.totalPoints} pts</td>
                   <td style={{ ...cellStyle, color: colors.muted }}>{test.durationMinutes} min</td>
                   <td style={{ ...cellStyle, color: colors.muted }}>{windowText(test)}</td>
+                  <td style={cellStyle}>{isStaff ? <StaffProgress test={test} /> : <MyProgress test={test} />}</td>
                 </tr>
               ))}
             </tbody>
