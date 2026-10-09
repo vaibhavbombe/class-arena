@@ -12,7 +12,7 @@ async function finalizeAttempt(attempt, test, submittedBy, now = new Date()) {
     const updated = await Attempt.findOneAndUpdate(
       { _id: current._id, status: 'in_progress', revision: current.revision },
       { $set: { status: 'submitted', submittedAt: now, submittedBy, score, maxScore, results } },
-      { new: true },
+      { returnDocument: 'after' },
     )
     if (updated) return updated
     current = await Attempt.findById(current._id)

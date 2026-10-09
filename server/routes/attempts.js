@@ -95,7 +95,7 @@ async function saveAnswers(req, test, attempt, batch, now) {
   const saved = await Attempt.findOneAndUpdate(
     { _id: attempt._id, status: 'in_progress', deadline: { $gte: new Date(now.getTime() - rules.GRACE_MS) } },
     { $set, $inc: { revision: 1 } },
-    { new: true },
+    { returnDocument: 'after' },
   )
   if (!saved) return { status: 409, error: 'This attempt has already been submitted' }
   return { attempt: saved }
