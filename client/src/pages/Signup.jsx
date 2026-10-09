@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage, saveSession } from '../session.js'
+import PasswordChecklist from '../components/PasswordChecklist.jsx'
+import { passwordIsValid } from '../passwordRules.js'
 import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle } from '../styles.js'
 
 // Creates a new institute; the person signing up becomes its admin.
@@ -18,6 +20,10 @@ export default function Signup() {
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
+    if (!passwordIsValid(form.password)) {
+      setError('Choose a password that meets all the requirements.')
+      return
+    }
     setSubmitting(true)
 
     try {
@@ -39,7 +45,8 @@ export default function Signup() {
         <input name="institutionName" value={form.institutionName} placeholder="Institute name" onChange={handleChange} required style={inputStyle} />
         <input name="name" value={form.name} placeholder="Your name" onChange={handleChange} required style={inputStyle} />
         <input name="email" type="email" value={form.email} placeholder="Email" onChange={handleChange} required style={inputStyle} />
-        <input name="password" type="password" value={form.password} placeholder="Password (8+ characters)" onChange={handleChange} minLength={8} required style={inputStyle} />
+        <input name="password" type="password" value={form.password} placeholder="Password" onChange={handleChange} minLength={8} required style={inputStyle} />
+        <PasswordChecklist password={form.password} />
         <button type="submit" disabled={submitting} style={buttonStyle}>{submitting ? 'Creating…' : 'Create institute'}</button>
         {error && <p role="alert" style={errorStyle}>{error}</p>}
       </form>

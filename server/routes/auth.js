@@ -24,7 +24,7 @@ function hashToken(token) {
 // Signing up creates a brand new institute, and the signer becomes its admin.
 // Teachers join by invite; students join with a class code (/student-signup).
 router.post('/signup', async (req, res) => {
-  if (rejectInvalid(res, req.body, ['email', 'password', 'name', 'institutionName'])) return
+  if (rejectInvalid(res, req.body, ['email', 'password', 'name', 'institutionName'], { newPassword: true })) return
   const { email, password, name, institutionName } = req.body
 
   const existing = await User.findOne({ email: email.toLowerCase().trim() })
@@ -53,7 +53,7 @@ router.post('/signup', async (req, res) => {
 // Students don't need an invite: a class join code puts them in that class's
 // institute. The institute comes from the class, never from the request.
 router.post('/student-signup', async (req, res) => {
-  if (rejectInvalid(res, req.body, ['email', 'password', 'name', 'joinCode'])) return
+  if (rejectInvalid(res, req.body, ['email', 'password', 'name', 'joinCode'], { newPassword: true })) return
   const { email, password, name } = req.body
 
   const joinCode = normalizeJoinCode(req.body.joinCode)
@@ -141,7 +141,7 @@ async function sendResetEmail(email) {
 }
 
 router.post('/reset-password', async (req, res) => {
-  if (rejectInvalid(res, req.body, ['token', 'password'])) return
+  if (rejectInvalid(res, req.body, ['token', 'password'], { newPassword: true })) return
   const { token, password } = req.body
 
   // Claim the token atomically, so the same link can't be used twice.

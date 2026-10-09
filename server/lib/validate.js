@@ -1,3 +1,5 @@
+const { passwordProblem } = require('./password')
+
 // Every field must be a non-empty string. Checking the type also blocks
 // objects like { "$gt": "" } from reaching a Mongo query (NoSQL injection).
 function missingFields(body, fields) {
@@ -5,14 +7,16 @@ function missingFields(body, fields) {
 }
 
 // Sends a 400 and returns true if anything is wrong, so routes can `return`.
-function rejectInvalid(res, body, fields) {
+// Pass { newPassword: true } on routes that set a password, to apply the password rules.
+function rejectInvalid(res, body, fields, { newPassword = false } = {}) {
   const missing = missingFields(body, fields)
   if (missing.length) {
     res.status(400).json({ error: `${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} required` })
     return true
   }
-  if (fields.includes('password') && body.password.length < 8) {
-    res.status(400).json({ error: 'Password must be at least 8 characters' })
+  const problem = newPassword && passwordProblem(body.password)
+  if (problem) {
+    res.status(400).json({ error: problem })
     return true
   }
   return false

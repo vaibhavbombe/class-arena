@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
+import PasswordChecklist from '../components/PasswordChecklist.jsx'
+import { passwordIsValid } from '../passwordRules.js'
 import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle } from '../styles.js'
 
 // Opened from the link in the reset email (/reset-password?token=...).
@@ -20,6 +22,10 @@ export default function ResetPassword() {
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
+    if (!passwordIsValid(form.password)) {
+      setError('Choose a password that meets all the requirements.')
+      return
+    }
     if (form.password !== form.confirm) {
       setError('The two passwords do not match.')
       return
@@ -41,7 +47,8 @@ export default function ResetPassword() {
       <h1 style={{ color: colors.accent }}>Choose a new password</h1>
       {!token && <p role="alert" style={errorStyle}>This reset link is missing its token.</p>}
       <form onSubmit={handleSubmit} style={formStyle}>
-        <input name="password" type="password" value={form.password} placeholder="New password (8+ characters)" onChange={handleChange} minLength={8} required style={inputStyle} />
+        <input name="password" type="password" value={form.password} placeholder="New password" onChange={handleChange} minLength={8} required style={inputStyle} />
+        <PasswordChecklist password={form.password} />
         <input name="confirm" type="password" value={form.confirm} placeholder="Type it again" onChange={handleChange} minLength={8} required style={inputStyle} />
         <button type="submit" disabled={!token || submitting} style={buttonStyle}>{submitting ? 'Saving…' : 'Set new password'}</button>
         {error && <p role="alert" style={errorStyle}>{error}</p>}

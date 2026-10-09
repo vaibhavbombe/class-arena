@@ -10,6 +10,7 @@ const User = require('../models/User')
 const RefreshToken = require('../models/RefreshToken')
 const { SALT_ROUNDS } = require('../routes/auth')
 const { ask } = require('./prompt')
+const { passwordProblem } = require('../lib/password')
 
 async function main() {
   const dbFlag = process.argv.indexOf('--db')
@@ -23,8 +24,9 @@ async function main() {
   if (!user) throw new Error(`No user with email ${email} in this database`)
   console.log(`Found ${user.name} (${user.role})`)
 
-  const password = await ask('New password (8+ characters, hidden): ', { hidden: true })
-  if (password.length < 8) throw new Error('Password must be at least 8 characters')
+  const password = await ask('New password (hidden; 8+ chars, upper, lower, number, special): ', { hidden: true })
+  const problem = passwordProblem(password)
+  if (problem) throw new Error(problem)
   const confirm = await ask('Type it again: ', { hidden: true })
   if (password !== confirm) throw new Error('Passwords do not match')
 
