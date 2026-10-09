@@ -6,6 +6,7 @@ import ClassDetail from './pages/ClassDetail.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import Login from './pages/Login.jsx'
+import QuestionBank from './pages/QuestionBank.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import Signup from './pages/Signup.jsx'
 import StudentSignup from './pages/StudentSignup.jsx'
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/classes/:id" element={<ClassDetail />} />
+        <Route path="/questions" element={<QuestionBank />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
