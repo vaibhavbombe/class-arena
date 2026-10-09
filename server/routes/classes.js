@@ -2,26 +2,15 @@ const express = require('express')
 const mongoose = require('mongoose')
 const Class = require('../models/Class')
 const Enrollment = require('../models/Enrollment')
+const Test = require('../models/Test')
 const User = require('../models/User')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { rejectInvalid } = require('../lib/validate')
 const { normalizeJoinCode, withUniqueJoinCode } = require('../lib/joinCode')
+const { findVisibleClass } = require('../lib/classAccess')
 
 const router = express.Router()
 router.use(requireAuth)
-
-// Loads a class the caller is allowed to see, or null. Admins see every class in
-// their institute, teachers only their own, students only ones they're enrolled in.
-// Callers answer null with 404 (not 403), so ids from other institutes can't be probed.
-async function findVisibleClass(req, classId) {
-  if (!mongoose.isValidObjectId(classId)) return null
-  const cls = await Class.findOne({ _id: classId, institutionId: req.institutionId })
-  if (!cls) return null
-  if (req.role === 'admin') return cls
-  if (req.role === 'teacher') return cls.teacherId.toString() === req.userId ? cls : null
-  const enrolled = await Enrollment.exists({ classId: cls._id, studentId: req.userId })
-  return enrolled ? cls : null
-}
 
 function classSummary(cls, { teacher, studentCount, includeJoinCode }) {
   return {
@@ -167,12 +156,13 @@ router.delete('/:id/students/:studentId', requireRole('teacher', 'admin'), async
   res.json({ message: 'Student removed from the class' })
 })
 
-// The class's teacher or an admin deletes it. Enrollments go first, then the class,
+// The class's teacher or an admin deletes it. Its tests and enrollments go first, then the class,
 // so a failure halfway leaves nothing pointing at a missing class.
 router.delete('/:id', requireRole('teacher', 'admin'), async (req, res) => {
   const cls = await findVisibleClass(req, req.params.id)
   if (!cls) return res.status(404).json({ error: 'Class not found' })
 
+  await Test.deleteMany({ institutionId: req.institutionId, classId: cls._id })
   await Enrollment.deleteMany({ classId: cls._id })
   await Class.deleteOne({ _id: cls._id })
   res.json({ message: `"${cls.name}" was deleted` })

@@ -14,6 +14,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, commit: process.env.RE
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))
+app.use('/api/tests', require('./routes/tests'))
 app.use('/api', require('./routes/institute'))
 
 // Catch-all error handler. Log details on the server,

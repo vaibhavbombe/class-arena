@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
+import TestsPanel from '../components/TestsPanel.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
 import { cellStyle, codeStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
@@ -56,7 +57,7 @@ export default function ClassDetail() {
   }
 
   async function deleteClass() {
-    if (!window.confirm(`Delete "${cls.name}"? All ${cls.studentCount} students will be removed from it. This can't be undone.`)) return
+    if (!window.confirm(`Delete "${cls.name}"? Its tests will be deleted and all ${cls.studentCount} students removed from it. This can't be undone.`)) return
     try {
       await api.delete(`/api/classes/${id}`)
       navigate('/dashboard')
@@ -92,6 +93,8 @@ export default function ClassDetail() {
           <p style={{ color: colors.muted, marginTop: 0 }}>
             {cls.subject && `${cls.subject} · `}Teacher: {cls.teacher?.name}
           </p>
+
+          <TestsPanel classId={id} isStaff={isStaff} />
 
           {isStaff && (
             <>
@@ -150,12 +153,6 @@ export default function ClassDetail() {
               </div>
               {manageMsg && <p role="status" style={messageStyle(manageMsg.ok)}>{manageMsg.text}</p>}
             </>
-          )}
-
-          {!isStaff && (
-            <p style={{ color: colors.muted, fontSize: '0.85rem', marginTop: '2rem' }}>
-              Tests and live quizzes for this class will show up here.
-            </p>
           )}
         </>
       )}
