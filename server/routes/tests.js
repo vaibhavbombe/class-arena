@@ -3,9 +3,14 @@ const mongoose = require('mongoose')
 const Test = require('../models/Test')
 const Question = require('../models/Question')
 const Attempt = require('../models/Attempt')
+const Enrollment = require('../models/Enrollment')
+const User = require('../models/User')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { findVisibleClass } = require('../lib/classAccess')
 const rules = require('../lib/testRules')
+const { GRACE_MS } = require('../lib/attemptRules')
+const { finalizeAttempt } = require('../lib/finalizeAttempt')
+const { summarize, reviewView } = require('../lib/results')
 
 const router = express.Router()
 router.use(requireAuth)
@@ -50,13 +55,18 @@ router.get('/', async (req, res) => {
 
   // Students also see where they are with each test.
   const mine = await Attempt.find({ institutionId: req.institutionId, studentId: req.userId, testId: { $in: tests.map((test) => test._id) } })
-    .select('testId status deadline submittedAt')
+    .select('testId status deadline submittedAt score maxScore')
   const mineById = new Map(mine.map((attempt) => [attempt.testId.toString(), attempt]))
   res.json(tests.map((test) => {
     const attempt = mineById.get(test._id.toString())
+    const outline = rules.studentOutline(test, now)
+    // The score only once results are visible, like the answers.
+    const showScore = attempt?.status === 'submitted' && outline.resultsVisible
     return {
-      ...rules.studentOutline(test, now),
-      myAttempt: attempt ? { status: attempt.status, deadline: attempt.deadline, submittedAt: attempt.submittedAt } : null,
+      ...outline,
+      myAttempt: attempt
+        ? { status: attempt.status, deadline: attempt.deadline, submittedAt: attempt.submittedAt, ...(showScore && { score: attempt.score, maxScore: attempt.maxScore }) }
+        : null,
     }
   }))
 })
@@ -134,6 +144,79 @@ router.post('/:id/publish', requireRole('teacher', 'admin'), async (req, res) =>
   test.publishedAt = new Date()
   await test.save()
   res.json(rules.staffDetail(test))
+})
+
+// Release results before the test closes, or hide them again (they always become
+// visible once the test closes).
+router.post('/:id/release', requireRole('teacher', 'admin'), async (req, res) => {
+  const test = await findVisibleTest(req, req.params.id)
+  if (!test) return res.status(404).json({ error: 'Test not found' })
+  if (test.status !== 'published') return res.status(409).json({ error: 'Publish the test first' })
+  if (typeof req.body?.released !== 'boolean') return res.status(400).json({ error: 'released must be true or false' })
+
+  test.resultsReleasedAt = req.body.released ? new Date() : null
+  await test.save()
+  res.json(rules.staffDetail(test))
+})
+
+// Submits every attempt whose time is up, so results never show stale "in progress" rows.
+async function finalizeOverdue(test, now) {
+  const overdue = await Attempt.find({
+    testId: test._id,
+    status: 'in_progress',
+    deadline: { $lt: new Date(now.getTime() - GRACE_MS) },
+  })
+  for (const attempt of overdue) await finalizeAttempt(attempt, test, 'timeout', attempt.deadline)
+}
+
+// Every enrolled student (including those who never started) plus class statistics.
+router.get('/:id/results', requireRole('teacher', 'admin'), async (req, res) => {
+  const now = new Date()
+  const test = await findVisibleTest(req, req.params.id)
+  if (!test) return res.status(404).json({ error: 'Test not found' })
+  await finalizeOverdue(test, now)
+
+  const attempts = await Attempt.find({ testId: test._id, institutionId: req.institutionId })
+  const enrollments = await Enrollment.find({ classId: test.classId }).select('studentId')
+  const studentIds = [...new Set([...enrollments.map((e) => e.studentId.toString()), ...attempts.map((a) => a.studentId.toString())])]
+  const students = await User.find({ _id: { $in: studentIds }, institutionId: req.institutionId }).select('name email')
+  const attemptByStudent = new Map(attempts.map((attempt) => [attempt.studentId.toString(), attempt]))
+  const enrolled = new Set(enrollments.map((e) => e.studentId.toString()))
+
+  const rows = students
+    .map((student) => {
+      const attempt = attemptByStudent.get(student._id.toString())
+      return {
+        studentId: student._id,
+        name: student.name,
+        email: student.email,
+        enrolled: enrolled.has(student._id.toString()),
+        status: attempt ? attempt.status : 'not_started',
+        score: attempt?.score ?? null,
+        maxScore: attempt?.maxScore ?? null,
+        startedAt: attempt?.startedAt ?? null,
+        submittedAt: attempt?.submittedAt ?? null,
+        submittedBy: attempt?.submittedBy ?? null,
+        minutesTaken: attempt?.submittedAt ? Math.round(((attempt.submittedAt - attempt.startedAt) / 60000) * 10) / 10 : null,
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  res.json({ test: rules.staffSummary(test, now), stats: summarize(test, attempts), students: rows })
+})
+
+// One student's answers, marked. Staff can always see this.
+router.get('/:id/results/:studentId', requireRole('teacher', 'admin'), async (req, res) => {
+  const test = await findVisibleTest(req, req.params.id)
+  if (!test) return res.status(404).json({ error: 'Test not found' })
+  if (!mongoose.isValidObjectId(req.params.studentId)) return res.status(404).json({ error: 'Attempt not found' })
+  await finalizeOverdue(test, new Date())
+
+  const attempt = await Attempt.findOne({ testId: test._id, studentId: req.params.studentId, institutionId: req.institutionId })
+  if (!attempt) return res.status(404).json({ error: 'This student has not started the test' })
+  if (attempt.status !== 'submitted') return res.status(409).json({ error: 'This student is still taking the test' })
+  const student = await User.findById(attempt.studentId).select('name email')
+  res.json({ student: student && { id: student._id, name: student.name, email: student.email }, ...reviewView(test, attempt) })
 })
 
 router.delete('/:id', requireRole('teacher', 'admin'), async (req, res) => {

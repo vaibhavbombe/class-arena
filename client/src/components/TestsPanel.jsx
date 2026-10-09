@@ -8,11 +8,18 @@ import { StatusBadge, windowText } from '../testFormat.jsx'
 function StaffProgress({ test }) {
   if (test.status === 'draft') return <span style={{ color: colors.muted }}>—</span>
   const { started, submitted } = test.attempts
-  return <span style={{ color: colors.muted }}>{submitted}{started > submitted ? ` (+${started - submitted} in progress)` : ''}</span>
+  return (
+    <Link to={`/tests/${test.id}/results`} style={linkStyle}>
+      {submitted}{started > submitted ? ` (+${started - submitted} in progress)` : ''} · results
+    </Link>
+  )
 }
 
 function MyProgress({ test }) {
   const attempt = test.myAttempt
+  if (attempt?.status === 'submitted' && attempt.score !== undefined) {
+    return <Link to={`/tests/${test.id}`} style={{ ...linkStyle, color: colors.teal }}>{attempt.score}/{attempt.maxScore} · review</Link>
+  }
   if (attempt?.status === 'submitted') return <span style={{ color: colors.teal }}>Submitted</span>
   if (attempt) return <Link to={`/tests/${test.id}`} style={{ ...linkStyle, fontWeight: 'bold' }}>Continue</Link>
   if (test.status === 'open') return <Link to={`/tests/${test.id}`} style={{ ...linkStyle, fontWeight: 'bold' }}>Start</Link>

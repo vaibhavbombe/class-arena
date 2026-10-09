@@ -185,6 +185,7 @@ export default function TestEditor() {
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <h2 style={{ margin: 0 }}>{test.title}</h2>
         <StatusBadge status={test.status} />
+        {!isDraft && <Link to={`/tests/${id}/results`} style={{ ...linkStyle, marginLeft: 'auto' }}>View results →</Link>}
       </div>
       <p style={{ color: colors.muted, fontSize: '0.85rem' }}>
         {items.length} question{items.length === 1 ? '' : 's'} · {totalPoints} points · {settings.durationMinutes} min · {windowText(test)}

@@ -30,6 +30,8 @@ const testSchema = new mongoose.Schema({
   shuffleOptions: { type: Boolean, default: false },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   publishedAt: { type: Date, default: null },
+  // Set when a teacher releases results before the test closes (see lib/results.js).
+  resultsReleasedAt: { type: Date, default: null },
   items: { type: [itemSchema], default: [] },
 }, { timestamps: true })
 
