@@ -1,8 +1,8 @@
 # ClassArena
 
 A multi-tenant classroom and competition platform for institutes. **Work in progress:**
-Phase 1 (accounts, roles, classes) is built. Phase 2 is in progress: the question bank works;
-timed tests and auto-grading are next. Live quizzes, coding contests and AI features are planned
+Phase 1 (accounts, roles, classes) is built. Phase 2 is in progress: the question bank and test
+authoring work; taking tests (timer, auto-grading) is next. Live quizzes, coding contests and AI features are planned
 and do not exist yet.
 
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
@@ -20,6 +20,10 @@ first request after it has been idle can take ~50 seconds)
 - **Question bank** (teachers and admins): multiple choice, multi-select and short-answer questions
   with tags, difficulty, an explanation, search and filters. Teachers see their own questions; admins
   see the whole institute. Students can't reach it at all. Code questions come with the judge in Phase 4.
+- **Tests** (authoring): a teacher builds a draft from bank questions with points, a duration, optional
+  open/close times and shuffle options, then publishes it to a class. Students see only an outline
+  (title, instructions, timing, question count, total points) until they start. Taking a test is not
+  built yet.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
 
 ## Stack
@@ -39,6 +43,11 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
 - **Join codes** use an alphabet without 0/O/1/I/L (easy to read off a board) and are globally unique,
   because a new student signs up with only the code. Staff can regenerate a leaked code.
 - **Request fields must be strings**, which blocks Mongo operator injection like `{"$gt": ""}`.
+- **Tests keep their own copy of each question.** Adding a question copies it into the test, and
+  publishing refreshes the copies one last time; after that, editing or deleting the bank question
+  can't change the test, so grading always matches what students saw. Questions, points and timing
+  lock on publish; title, instructions and closing time can still change (e.g. to extend a deadline).
+- **Test status (draft / upcoming / open / closed) is computed from the server's clock**, never the browser's.
 - **Password rules are enforced on the server** (8–72 characters with upper and lower case, a number
   and a special character) wherever a password is set; the form's live checklist is only a hint.
   Login doesn't apply them, so older accounts still work. The 72 cap is because bcrypt ignores
@@ -57,7 +66,8 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
   so a failure halfway can be retried, but nothing rolls back automatically.
 - Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
   httpOnly cookies would be safer.
-- Automated tests are thin so far: unit tests (`npm test` in `server/`) cover question validation.
+- Automated tests are thin so far: unit tests (`npm test` in `server/`) cover question validation
+  and test rules (settings, open/closed status, and that the student outline never includes questions).
   API flows were checked with smoke scripts run against a separate dev database; those scripts
   are not in the repo yet.
 - The Render free tier sleeps when idle, so the first request after a while can take ~50 seconds.
@@ -113,6 +123,11 @@ Server environment variables:
 | GET / POST | `/api/questions` (`?type=&tag=&q=`) | teacher (own), admin (all) |
 | GET | `/api/questions/tags` | teacher, admin |
 | GET / PUT / DELETE | `/api/questions/:id` | owner, admin |
+| GET | `/api/tests?classId=` | staff (all), students (published outlines) |
+| POST | `/api/tests` | class teacher, admin (creates a draft) |
+| GET | `/api/tests/:id` | staff (full, with answers), students (outline only) |
+| PUT / DELETE | `/api/tests/:id` | class teacher, admin |
+| POST | `/api/tests/:id/publish` | class teacher, admin |
 
 ## Roadmap
 2. Question bank and timed tests with auto-grading

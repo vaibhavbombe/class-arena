@@ -10,6 +10,7 @@ import QuestionBank from './pages/QuestionBank.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import Signup from './pages/Signup.jsx'
 import StudentSignup from './pages/StudentSignup.jsx'
+import TestEditor from './pages/TestEditor.jsx'
 
 export default function App() {
   useEffect(watchOtherTabs, [])
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/classes/:id" element={<ClassDetail />} />
         <Route path="/questions" element={<QuestionBank />} />
+        <Route path="/tests/:id" element={<TestEditor />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
