@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage, isLoggedIn, saveSession } from '../session.js'
+import PasswordChecklist from '../components/PasswordChecklist.jsx'
+import { passwordIsValid } from '../passwordRules.js'
 import { buttonStyle, colors, errorStyle, formStyle, inputStyle, narrowPageStyle } from '../styles.js'
 
 // Teachers (and co-admins) land here from the invite email.
@@ -21,6 +23,10 @@ export default function AcceptInvite() {
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
+    if (!passwordIsValid(form.password)) {
+      setError('Choose a password that meets all the requirements.')
+      return
+    }
     setSubmitting(true)
 
     try {
@@ -46,7 +52,8 @@ export default function AcceptInvite() {
       )}
       <form onSubmit={handleSubmit} style={formStyle}>
         <input name="name" value={form.name} placeholder="Your name" onChange={handleChange} required style={inputStyle} />
-        <input name="password" type="password" value={form.password} placeholder="Choose a password (8+ characters)" onChange={handleChange} minLength={8} required style={inputStyle} />
+        <input name="password" type="password" value={form.password} placeholder="Choose a password" onChange={handleChange} minLength={8} required style={inputStyle} />
+        <PasswordChecklist password={form.password} />
         <button type="submit" disabled={!token || submitting} style={buttonStyle}>{submitting ? 'Joining…' : 'Join'}</button>
         {error && <p role="alert" style={errorStyle}>{error}</p>}
       </form>

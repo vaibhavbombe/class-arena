@@ -34,6 +34,11 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
 - **Join codes** use an alphabet without 0/O/1/I/L (easy to read off a board) and are globally unique,
   because a new student signs up with only the code. Staff can regenerate a leaked code.
 - **Request fields must be strings**, which blocks Mongo operator injection like `{"$gt": ""}`.
+- **Password rules are enforced on the server** (8–72 characters with upper and lower case, a number
+  and a special character) wherever a password is set; the form's live checklist is only a hint.
+  Login doesn't apply them, so older accounts still work. The 72 cap is because bcrypt ignores
+  anything past 72 bytes. (NIST SP 800-63B prefers length plus breached-password checks over
+  composition rules; a breached-password check is not implemented.)
 - **Password reset doesn't reveal who has an account.** "Forgot password" gives the same answer for
   any email and sends the email in the background, so response time doesn't leak it either. Only a
   SHA-256 hash of the reset token is stored; links are single-use, expire in 30 minutes, are limited

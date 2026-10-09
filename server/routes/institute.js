@@ -71,7 +71,7 @@ router.post('/invites', requireAuth, requireRole('admin'), async (req, res) => {
 
 // No auth here: the person accepting doesn't have an account yet.
 router.post('/invites/accept', async (req, res) => {
-  if (rejectInvalid(res, req.body, ['token', 'password', 'name'])) return
+  if (rejectInvalid(res, req.body, ['token', 'password', 'name'], { newPassword: true })) return
   const { token, password, name } = req.body
 
   // Mark the invite used atomically, so one invite can't create two accounts.
