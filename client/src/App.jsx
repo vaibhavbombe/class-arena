@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import ThemeToggle from './components/ThemeToggle.jsx'
 import { watchOtherTabs } from './session.js'
 import AcceptInvite from './pages/AcceptInvite.jsx'
+import ClassAnalytics from './pages/ClassAnalytics.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/classes/:id" element={<ClassDetail />} />
+        <Route path="/classes/:id/analytics" element={<ClassAnalytics />} />
         <Route path="/questions" element={<QuestionBank />} />
         <Route path="/tests/:id" element={<TestPage />} />
         <Route path="/tests/:id/results" element={<TestResults />} />

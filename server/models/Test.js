@@ -15,6 +15,7 @@ const itemSchema = new mongoose.Schema({
   acceptedAnswers: { type: [String], default: undefined },
   caseSensitive: { type: Boolean, default: false },
   explanation: { type: String, default: '' },
+  tags: { type: [String], default: undefined }, // copied for topic analytics (older tests lack it)
 }, { _id: false })
 
 const testSchema = new mongoose.Schema({
