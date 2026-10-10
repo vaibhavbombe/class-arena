@@ -149,7 +149,7 @@ export default function LiveQuizEditor() {
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
         <button onClick={save} disabled={busy || !dirty} style={{ ...buttonStyle, opacity: busy || !dirty ? 0.6 : 1 }}>{busy ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}</button>
-        <button onClick={startGame} disabled={busy || !quiz.items.length} style={{ ...buttonStyle, background: colors.success, boxShadow: '0 3px 0 #145206' }}>▶ Start game</button>
+        <button onClick={startGame} disabled={busy || !quiz.items.length} style={{ ...buttonStyle, background: colors.successSolid, boxShadow: `0 3px 0 ${colors.successSolidDark}` }}>▶ Start game</button>
         <button onClick={deleteQuiz} disabled={busy} style={dangerButtonStyle}>Delete live quiz</button>
         {message && <span role="status" style={{ ...messageStyle(message.ok), marginTop: 0 }}>{message.text}</span>}
       </div>

@@ -1,25 +1,32 @@
-// Shared styles: a light, friendly look that matches the live game (purple brand,
-// Montserrat, white rounded cards, chunky buttons). Every page takes its colours from
-// here, and each colour has one meaning: primary = brand/actions, danger = errors and
-// deletes, success = done/correct, link = links.
+// Shared styles: a friendly look that matches the live game (purple brand, Montserrat,
+// rounded cards, chunky buttons). Every page takes its colours from here, and each colour
+// has one meaning: primary = brand text/accents, danger = errors and deletes,
+// success = done/correct, link = links. Solid colours (brand, successSolid) are for
+// backgrounds behind white text.
+//
+// The values are CSS variables defined in global.css for light and dark mode, so the
+// whole app switches theme without re-rendering anything.
 export const FONT = "'Montserrat', 'Segoe UI', system-ui, sans-serif"
 
 export const colors = {
-  bg: '#F2F0F7',
-  surface: '#FFFFFF',
-  border: '#E2DDEC',
-  text: '#1B1B1F',
-  muted: '#6B6680',
-  primary: '#46178F',
-  primaryDark: '#2B0D63',
-  primarySoft: '#EDE7F8',
-  danger: '#D01937',
-  success: '#1F7A0A',
-  warning: '#B98100',
-  link: '#1368CE',
+  bg: 'var(--bg)',
+  surface: 'var(--surface)',
+  surfaceHover: 'var(--surface-hover)',
+  border: 'var(--border)',
+  text: 'var(--text)',
+  muted: 'var(--muted)',
+  primary: 'var(--primary)',
+  brand: 'var(--brand)',
+  brandDark: 'var(--brand-dark)',
+  danger: 'var(--danger)',
+  dangerBorder: 'var(--danger-border)',
+  success: 'var(--success)',
+  successSolid: 'var(--success-solid)',
+  successSolidDark: 'var(--success-solid-dark)',
+  link: 'var(--link)',
 }
 
-const shadow = '0 2px 6px rgba(43, 13, 99, 0.08)'
+const shadow = 'var(--shadow)'
 
 export const pageStyle = {
   minHeight: '100vh',
@@ -33,12 +40,12 @@ export const pageStyle = {
 export const narrowPageStyle = {
   ...pageStyle,
   minHeight: 'auto',
-  maxWidth: '420px',
-  margin: '3rem auto',
+  width: 'min(420px, calc(100% - 2rem))',
+  margin: '4.5rem auto 2rem',
   padding: '2rem 1.75rem',
   background: colors.surface,
   borderRadius: '16px',
-  boxShadow: '0 8px 30px rgba(43, 13, 99, 0.12)',
+  boxShadow: 'var(--shadow-strong)',
 }
 export const widePageStyle = { ...pageStyle, maxWidth: '980px', margin: '0 auto' }
 
@@ -64,7 +71,7 @@ export const inputStyle = {
 }
 
 export const buttonStyle = {
-  background: colors.primary,
+  background: colors.brand,
   color: '#FFFFFF',
   border: 'none',
   borderRadius: '8px',
@@ -73,7 +80,7 @@ export const buttonStyle = {
   fontWeight: 800,
   fontSize: '0.95rem',
   cursor: 'pointer',
-  boxShadow: `0 3px 0 ${colors.primaryDark}`,
+  boxShadow: `0 3px 0 ${colors.brandDark}`,
 }
 
 export const ghostButtonStyle = {
@@ -87,7 +94,7 @@ export const ghostButtonStyle = {
   cursor: 'pointer',
 }
 
-export const dangerButtonStyle = { ...ghostButtonStyle, color: colors.danger, borderColor: '#F3C2CB' }
+export const dangerButtonStyle = { ...ghostButtonStyle, color: colors.danger, borderColor: colors.dangerBorder }
 
 export const sectionTitleStyle = { color: colors.primary, marginTop: '2rem', fontSize: '1.1rem', fontWeight: 800 }
 export const cellStyle = { padding: '0.65rem 0.6rem 0.65rem 0', borderBottom: `1px solid ${colors.border}`, textAlign: 'left' }

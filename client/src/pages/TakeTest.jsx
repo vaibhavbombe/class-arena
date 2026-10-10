@@ -246,7 +246,7 @@ export default function TakeTest({ me }) {
         const answer = answers[question.index] || { selectedOptionIds: [], text: '' }
         const name = `q${question.index}`
         return (
-          <fieldset key={question.index} style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '1rem 1.15rem', marginTop: '1rem', boxShadow: '0 2px 6px rgba(43, 13, 99, 0.08)' }}>
+          <fieldset key={question.index} style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '1rem 1.15rem', marginTop: '1rem', boxShadow: 'var(--shadow)' }}>
             <legend style={{ fontSize: '0.8rem', color: colors.primary, padding: '0 0.3rem' }}>
               Question {question.number} · {question.points} pt{question.points > 1 ? 's' : ''}{question.type === 'multi' ? ' · select all that apply' : ''}
             </legend>
