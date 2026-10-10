@@ -36,8 +36,11 @@ first request after it has been idle can take ~50 seconds)
 - **Class analytics** (teachers and admins): class average, participation, average by test over time,
   topic mastery by question tag (weakest first), the hardest questions, and every student's average,
   last score and missed tests, with a "needs attention" flag (average under 50% or 2+ missed tests).
-- **Code judge (Phase 4, in progress):** the server-side judge for JavaScript exists and is tested, but
-  coding questions and the editor are not built yet, so students can't submit code so far.
+- **Coding questions (Phase 4, in progress):** teachers write JavaScript questions in the bank with a
+  function to implement, starter code, visible sample tests, hidden tests, time/memory limits and an
+  optional reference solution, and can "check with judge" to run that solution against every test
+  before saving. The student editor and submitting code are not built yet, and coding questions can't
+  be used in tests or live quizzes so far.
 - **Light and dark mode:** System (follows the device), Light or Dark, switchable from the header or the
   login pages and remembered per device.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
@@ -104,6 +107,9 @@ Vercel (client), Render (server)
   per-question stats are saved to MongoDB; Redis keys expire after 3 hours.
 - **Joining needs the PIN and enrolment in the class.** A wrong PIN and a PIN for another class get the
   same "not found", so PINs can't be probed.
+- **Hidden tests stay on the server.** Coding questions live in the staff-only question bank; students
+  will only ever receive the sample tests. Test data is stored as plain JSON (round-tripped through
+  `JSON.stringify`), and "check with judge" runs through the same sandboxed worker as students' code.
 - **Student code never runs in the API process.** The API puts a job on a Redis queue; a separate judge
   worker process (restarted automatically, killed by a 30 s watchdog if a job hangs) runs it in a fresh
   V8 isolate via `isolated-vm`: no Node APIs (no require, files, network, process or timers), a memory
@@ -181,11 +187,11 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 73 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 78 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 15 suites, 206 checks): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 16 suites, 217 checks): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -217,6 +223,7 @@ Server environment variables:
 | GET / POST | `/api/questions` (`?type=&tag=&q=`) | teacher (own), admin (all) |
 | GET | `/api/questions/tags` | teacher, admin |
 | GET / PUT / DELETE | `/api/questions/:id` | owner, admin |
+| POST | `/api/questions/check-code` | teacher, admin (runs a solution against all tests in the judge) |
 | GET | `/api/tests?classId=` | staff (all), students (published outlines) |
 | POST | `/api/tests` | class teacher, admin (creates a draft) |
 | GET | `/api/tests/:id` | staff (full, with answers), students (outline only) |

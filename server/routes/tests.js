@@ -113,6 +113,8 @@ router.put('/:id', requireRole('teacher', 'admin'), async (req, res) => {
     const fresh = await Question.find(questionFilter(req, newIds))
     const freshById = new Map(fresh.map((question) => [question._id.toString(), question]))
     if (fresh.length !== newIds.length) return res.status(400).json({ error: 'Some questions were not found in your question bank' })
+    // Grading code inside timed tests comes in a later step; refuse clearly until then.
+    if (fresh.some((question) => question.type === 'code')) return res.status(400).json({ error: "Coding questions can't be added to tests yet" })
 
     changes.items = parsed.items.map(({ questionId, points }) => {
       const kept = existing.get(questionId)

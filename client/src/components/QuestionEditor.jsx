@@ -2,15 +2,16 @@ import { useState } from 'react'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
 import { buttonStyle, colors, errorStyle, ghostButtonStyle, inputStyle } from '../styles.js'
+import CodeSettingsEditor, { codeFormToBody, toCodeForm } from './CodeSettingsEditor.jsx'
 
-export const TYPE_LABELS = { mcq: 'Multiple choice', multi: 'Multi-select', short: 'Short answer' }
+export const TYPE_LABELS = { mcq: 'Multiple choice', multi: 'Multi-select', short: 'Short answer', code: 'Code (JavaScript)' }
 
 const emptyOptions = () => [{ text: '', correct: true }, { text: '', correct: false }]
 
 // Turns a saved question (or nothing) into editable form state.
 function toForm(question) {
   if (!question) {
-    return { type: 'mcq', prompt: '', options: emptyOptions(), acceptedAnswers: [''], caseSensitive: false, explanation: '', tags: '', difficulty: 'medium' }
+    return { type: 'mcq', prompt: '', options: emptyOptions(), acceptedAnswers: [''], caseSensitive: false, code: toCodeForm(null), explanation: '', tags: '', difficulty: 'medium' }
   }
   return {
     type: question.type,
@@ -18,6 +19,7 @@ function toForm(question) {
     options: question.options?.map(({ text, correct }) => ({ text, correct })) || emptyOptions(),
     acceptedAnswers: question.acceptedAnswers?.length ? [...question.acceptedAnswers] : [''],
     caseSensitive: question.caseSensitive || false,
+    code: toCodeForm(question.code),
     explanation: question.explanation || '',
     tags: (question.tags || []).join(', '),
     difficulty: question.difficulty || 'medium',
@@ -72,6 +74,12 @@ export default function QuestionEditor({ question, onSaved, onCancel }) {
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
+    let codeBody = null
+    if (form.type === 'code') {
+      const parsed = codeFormToBody(form.code)
+      if (parsed.error) return setError(parsed.error)
+      codeBody = parsed.code
+    }
     setSaving(true)
     const body = {
       type: form.type,
@@ -79,9 +87,11 @@ export default function QuestionEditor({ question, onSaved, onCancel }) {
       explanation: form.explanation,
       difficulty: form.difficulty,
       tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-      ...(form.type === 'short'
-        ? { acceptedAnswers: form.acceptedAnswers, caseSensitive: form.caseSensitive }
-        : { options: form.options }),
+      ...(form.type === 'code'
+        ? { code: codeBody }
+        : form.type === 'short'
+          ? { acceptedAnswers: form.acceptedAnswers, caseSensitive: form.caseSensitive }
+          : { options: form.options }),
     }
     try {
       const response = question
@@ -121,7 +131,9 @@ export default function QuestionEditor({ question, onSaved, onCancel }) {
         <textarea value={form.prompt} onChange={(event) => set('prompt', event.target.value)} required rows={3} maxLength={5000} style={{ ...inputStyle, resize: 'vertical' }} />
       </label>
 
-      {form.type !== 'short' ? (
+      {form.type === 'code' ? (
+        <CodeSettingsEditor value={form.code} onChange={(code) => set('code', code)} />
+      ) : form.type !== 'short' ? (
         <fieldset style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <legend style={{ ...labelStyle, marginBottom: '0.3rem' }}>
             Options: tick the {form.type === 'mcq' ? 'one correct answer' : 'correct answers'}

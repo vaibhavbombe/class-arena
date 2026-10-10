@@ -3,7 +3,8 @@ const mongoose = require('mongoose')
 const Question = require('../models/Question')
 const User = require('../models/User')
 const { requireAuth, requireRole } = require('../middleware/auth')
-const { parseQuestionInput } = require('../lib/questionInput')
+const { parseQuestionInput, cleanCode } = require('../lib/questionInput')
+const { judgeCode } = require('../judge/queue')
 
 // The question bank holds correct answers, so the whole router is staff-only.
 // Students only ever see questions through test views that strip the answers.
@@ -45,6 +46,21 @@ router.get('/', async (req, res) => {
 router.get('/tags', async (req, res) => {
   const tags = await Question.distinct('tags', visibleFilter(req))
   res.json(tags.sort())
+})
+
+// "Check with judge": runs a solution (normally the reference solution) through the real
+// judge against every sample and hidden test, showing all inputs and outputs. Staff only,
+// so revealing the hidden tests here is fine. Catches wrong expected values before saving.
+router.post('/check-code', async (req, res) => {
+  const { code, error } = cleanCode(req.body?.code)
+  if (error) return res.status(400).json({ error })
+  const solution = req.body?.solution
+  if (typeof solution !== 'string' || !solution.trim()) return res.status(400).json({ error: 'Write a solution to check' })
+
+  const tests = [...code.sampleTests, ...code.hiddenTests]
+  const result = await judgeCode({ code: solution, functionName: code.functionName, tests, timeLimitMs: code.timeLimitMs, memoryMb: code.memoryMb, revealAll: true })
+  result.tests = result.tests.map((test) => ({ ...test, kind: test.index < code.sampleTests.length ? 'sample' : 'hidden' }))
+  res.json(result)
 })
 
 router.get('/:id', async (req, res) => {
