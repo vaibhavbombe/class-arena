@@ -70,6 +70,18 @@ export default function LiveQuizEditor() {
     }
   }
 
+  async function startGame() {
+    if (dirty && !window.confirm('You have unsaved changes. Start the game with the last saved version?')) return
+    setBusy(true)
+    try {
+      const response = await api.post('/api/live-games', { quizId: id })
+      navigate(`/live-games/${response.data.id}/host`)
+    } catch (requestError) {
+      setMessage({ ok: false, text: errorMessage(requestError, 'Could not start a game.') })
+      setBusy(false)
+    }
+  }
+
   async function deleteQuiz() {
     if (!window.confirm(`Delete "${quiz.title}"? This can't be undone.`)) return
     try {
@@ -137,9 +149,12 @@ export default function LiveQuizEditor() {
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
         <button onClick={save} disabled={busy || !dirty} style={{ ...buttonStyle, opacity: busy || !dirty ? 0.6 : 1 }}>{busy ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}</button>
+        <button onClick={startGame} disabled={busy || !quiz.items.length} style={{ ...buttonStyle, background: '#46178F', color: '#FFFFFF', opacity: quiz.items.length ? 1 : 0.6 }}>▶ Start game</button>
         <button onClick={deleteQuiz} disabled={busy} style={{ ...ghostButtonStyle, color: colors.accent, borderColor: colors.accent }}>Delete live quiz</button>
         {message && <span role="status" style={{ ...messageStyle(message.ok), marginTop: 0 }}>{message.text}</span>}
       </div>
+
+      <PastGames quizId={id} />
 
       <QuestionPicker
         addedIds={addedIds}
@@ -147,5 +162,52 @@ export default function LiveQuizEditor() {
         onAdd={(question) => change((current) => [...current, { ...question, questionId: question._id, seconds: DEFAULT_SECONDS }])}
       />
     </div>
+  )
+}
+
+// Games already played with this quiz, with the winner; expands to the full standings.
+function PastGames({ quizId }) {
+  const [games, setGames] = useState([])
+  const [open, setOpen] = useState(null) // { id, players, questions }
+
+  useEffect(() => {
+    api.get('/api/live-games', { params: { quizId } }).then((response) => setGames(response.data)).catch(() => setGames([]))
+  }, [quizId])
+
+  async function toggle(gameId) {
+    if (open?.id === gameId) return setOpen(null)
+    const response = await api.get(`/api/live-games/${gameId}`).catch(() => null)
+    if (response) setOpen(response.data)
+  }
+
+  if (!games.length) return null
+  return (
+    <section>
+      <h3 style={sectionTitleStyle}>Past games</h3>
+      {games.map((game) => (
+        <div key={game.id} style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+            <span>{new Date(game.playedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} · {game.playerCount} players{game.winner ? ` · 🏆 ${game.winner.name} (${game.winner.score})` : ''}</span>
+            <button onClick={() => toggle(game.id)} style={smallButton}>{open?.id === game.id ? 'Hide' : 'Results'}</button>
+          </div>
+          {open?.id === game.id && (
+            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.6rem', fontSize: '0.85rem' }}>
+              <ol style={{ margin: 0, paddingLeft: '1.2rem', flex: '1 1 220px' }}>
+                {open.players.map((player) => (
+                  <li key={player.studentId}>{player.name}: {player.score} pts, {player.correctCount} correct</li>
+                ))}
+              </ol>
+              <ul style={{ margin: 0, paddingLeft: '1.1rem', flex: '2 1 320px', color: colors.muted }}>
+                {open.questions.map((question) => (
+                  <li key={question.number}>
+                    Q{question.number}: {question.stats ? `${question.stats.correctCount}/${question.stats.answeredCount} correct` : 'not played'} · {question.prompt.slice(0, 80)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ))}
+    </section>
   )
 }

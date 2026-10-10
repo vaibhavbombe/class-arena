@@ -2,9 +2,9 @@
 
 A multi-tenant classroom and competition platform for institutes. **Work in progress:**
 Phases 1 (accounts, roles, classes) and 2 (question bank, timed tests, server-side grading,
-results) are built. Phase 3 (live quiz battles) is in progress: the real-time foundation and quiz
-authoring exist; the game itself does not yet. Coding contests and AI features are planned and do not
-exist yet.
+results) are built. Phase 3 (live quiz battles) works end to end: authoring, Kahoot-style games with a
+server-run timer, speed-based scoring and a Redis leaderboard. Coding contests and AI features are
+planned and do not exist yet.
 
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
 first request after it has been idle can take ~50 seconds)
@@ -29,8 +29,10 @@ first request after it has been idle can take ~50 seconds)
   explanations once the test closes (or when the teacher releases them early). Teachers get every
   enrolled student's status and score, average/median/highest/lowest, % correct per question,
   each student's marked answers, and a CSV export.
-- **Live quizzes** (authoring only so far): teachers build a quiz for a class from multiple choice and
-  multi-select bank questions, with 5–120 seconds per question. Running a game is not built yet.
+- **Live quizzes:** teachers build a quiz for a class from multiple choice and multi-select bank
+  questions (5–120 seconds each), then run it as a Kahoot-style game: a 6-digit PIN and lobby, coloured
+  answer tiles with shapes, a countdown, a reveal with the answer chart and top 5, and a final podium.
+  Students play on their phones (enrolled students only). Results of past games are kept per quiz.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
 
 ## Stack
@@ -82,6 +84,19 @@ Vercel (client), Render (server)
   server verifies it and reloads the user, so a removed user's unexpired token can't open a socket either.
 - **Redis keys are prefixed by environment** (`dev:`, `test:`, `prod:`), so local runs, integration tests
   and production can share one Redis database without seeing each other's data.
+- **The live game is server-authoritative.** The server opens and closes each question on its own
+  clock, decides whether an answer counts and computes points:
+  `correct ? round(1000 × (1 − (time taken ÷ time limit) ÷ 2)) : 0` (Kahoot's formula). Players get each
+  question without the answer key; the correct option is only sent at the reveal.
+- **Game state lives in Redis; the answer key doesn't.** Players, answers and the leaderboard (a sorted
+  set) are in Redis so any refreshed screen can rejoin mid-game. Accepting an answer is one Lua script
+  (question still open, deadline not passed, first answer from this player, add the points), so five
+  simultaneous taps score once. State changes (lobby → question → reveal → … → ended) are
+  compare-and-set scripts, so the timer and the teacher's "skip" can't both close a question. If the
+  server restarts mid-question, the next event closes the overdue question. Final standings and
+  per-question stats are saved to MongoDB; Redis keys expire after 3 hours.
+- **Joining needs the PIN and enrolment in the class.** A wrong PIN and a PIN for another class get the
+  same "not found", so PINs can't be probed.
 - **Password rules are enforced on the server** (8–72 characters with upper and lower case, a number
   and a special character) wherever a password is set; the form's live checklist is only a hint.
   Login doesn't apply them, so older accounts still work. The 72 cap is because bcrypt ignores
@@ -100,7 +115,9 @@ Vercel (client), Render (server)
   so a failure halfway can be retried, but nothing rolls back automatically.
 - Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
   httpOnly cookies would be safer.
-- There are no browser (end-to-end UI) tests; the UI has only been checked by hand. See **Testing** below
+- There are no browser (end-to-end UI) tests; the UI has only been checked by hand.
+- Live games run on a single server instance (timers are in-process; Render's free tier runs one). Scaling
+  out would need the Socket.io Redis adapter and a shared timer. The game hasn't been load-tested yet. See **Testing** below
   for what is covered.
 - Multi-select has no partial credit, and short answers are exact matches after normalising (no
   fuzzy matching or manual regrading yet).
@@ -138,14 +155,15 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 41 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 47 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers) and results statistics.
-- **Integration tests** (`npm run test:integration`, 12 suites, 162 checks): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 13 suites, 191 checks): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
-  race between autosaves and submit, Socket.io authentication, and live quiz authoring. The runner refuses databases whose names don't end in `-dev`
+  race between autosaves and submit, Socket.io authentication, live quiz authoring, and full live
+  games over Socket.io (joining rules, timing, scoring, simultaneous answers, rejoin after refresh). The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
 - Not covered: the React UI, load/performance, and email delivery itself.
 
@@ -182,6 +200,10 @@ Server environment variables:
 | POST | `/api/tests/:id/release` (`{ released }`) | class teacher, admin |
 | GET / POST | `/api/live-quizzes` (`?classId=`) | class teacher, admin |
 | GET / PUT / DELETE | `/api/live-quizzes/:id` | class teacher, admin |
+| POST | `/api/live-games` (`{ quizId }`) | class teacher, admin (creates a game + PIN) |
+| GET | `/api/live-games/active?classId=` | class members |
+| GET | `/api/live-games?quizId=` · `/api/live-games/:id` | class teacher, admin (past games, results) |
+| Socket.io | `host:join/next/skip/end`, `player:join/answer` | host: class teacher or admin; player: enrolled student |
 | GET | `/api/tests/:id/results` | class teacher, admin |
 | GET | `/api/tests/:id/results/:studentId` | class teacher, admin |
 
