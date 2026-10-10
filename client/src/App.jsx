@@ -5,6 +5,7 @@ import AcceptInvite from './pages/AcceptInvite.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
+import LiveQuizEditor from './pages/LiveQuizEditor.jsx'
 import Login from './pages/Login.jsx'
 import QuestionBank from './pages/QuestionBank.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/questions" element={<QuestionBank />} />
         <Route path="/tests/:id" element={<TestPage />} />
         <Route path="/tests/:id/results" element={<TestResults />} />
+        <Route path="/live-quizzes/:id" element={<LiveQuizEditor />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
