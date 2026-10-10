@@ -22,6 +22,9 @@ services:
       # A sender address verified in Brevo.
       - key: MAIL_FROM
         sync: false
+      # Live game state. Must be a TLS URL (rediss://), e.g. from Upstash.
+      - key: REDIS_URL
+        sync: false
       # The Vercel URL, no trailing slash. Used for CORS and invite links.
       - key: CLIENT_URL
         sync: false

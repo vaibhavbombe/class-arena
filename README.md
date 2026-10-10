@@ -31,7 +31,8 @@ first request after it has been idle can take ~50 seconds)
 
 ## Stack
 React 18 + Vite, React Router, axios · Node.js + Express 5, Mongoose (MongoDB Atlas),
-bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · Vercel (client), Render (server)
+bcrypt, jsonwebtoken, Socket.io, Redis (ioredis), Brevo (production email) / nodemailer + Gmail (local) ·
+Vercel (client), Render (server)
 
 ## Design decisions
 - **The tenant comes from the token, never the request.** `institutionId` is signed into the
@@ -73,6 +74,10 @@ bcrypt, jsonwebtoken, Brevo (production email) / nodemailer + Gmail (local) · V
   the results page first submits any attempt whose time is up, so it never shows stale "in progress" rows.
 - **CSV export guards against formula injection:** cells starting with `=`, `+`, `-` or `@` get a
   leading apostrophe, so a student named `=HYPERLINK(...)` can't run a formula in the teacher's spreadsheet.
+- **Sockets use the same login as the API.** A Socket.io connection must send the access token; the
+  server verifies it and reloads the user, so a removed user's unexpired token can't open a socket either.
+- **Redis keys are prefixed by environment** (`dev:`, `test:`, `prod:`), so local runs, integration tests
+  and production can share one Redis database without seeing each other's data.
 - **Password rules are enforced on the server** (8–72 characters with upper and lower case, a number
   and a special character) wherever a password is set; the form's live checklist is only a hint.
   Login doesn't apply them, so older accounts still work. The 72 cap is because bcrypt ignores
@@ -125,17 +130,18 @@ Server environment variables:
 | `CLIENT_URL` | Client origin, used for CORS and invite links (no trailing slash) |
 | `BREVO_API_KEY`, `MAIL_FROM` | Production email via Brevo's HTTP API (`MAIL_FROM` must be a verified sender) |
 | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Local email via Gmail SMTP, used when `BREVO_API_KEY` is not set |
+| `REDIS_URL` | Redis for live game state (Phase 3). Use a TLS `rediss://` URL in production |
 | `PORT` | Defaults to 5002 |
 
 ## Testing
 - **Unit tests** (`npm test`, 36 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers) and results statistics.
-- **Integration tests** (`npm run test:integration`, 10 suites, 144 checks): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 11 suites, 150 checks): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
-  race between autosaves and submit. The runner refuses databases whose names don't end in `-dev`
+  race between autosaves and submit, and Socket.io authentication. The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
 - Not covered: the React UI, load/performance, and email delivery itself.
 

@@ -7,7 +7,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true
 
 const SUITES = [
   'auth', 'classes', 'passwordReset', 'passwordRules', 'members',
-  'questions', 'tests', 'attempts', 'results', 'raceSubmit',
+  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime',
 ]
 const PORT = process.env.INTEGRATION_PORT || '5099'
 
@@ -34,7 +34,7 @@ async function main() {
   }
 
   // Email is switched off so the suites never send real messages.
-  const server = runNode('server.js', { PORT, EMAIL_DISABLED: 'true' }, { onOutput: () => {} })
+  const server = runNode('server.js', { PORT, EMAIL_DISABLED: 'true', REDIS_PREFIX: 'test' }, { onOutput: () => {} })
   const ready = new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Server did not start within 30s')), 30000)
     server.stdout.on('data', (chunk) => {
