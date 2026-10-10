@@ -1,9 +1,80 @@
+/* Colour tokens for light and dark mode. styles.js refers to these variables, so switching
+   theme is just changing <html data-theme>. "system" (no data-theme) follows the device. */
+:root {
+  color-scheme: light;
+  --bg: #f2f0f7;
+  --surface: #ffffff;
+  --surface-hover: #faf8fd;
+  --border: #e2ddec;
+  --text: #1b1b1f;
+  --muted: #6b6680;
+  --primary: #46178f;
+  --brand: #46178f;
+  --brand-dark: #2b0d63;
+  --danger: #d01937;
+  --danger-border: #f3c2cb;
+  --success: #1f7a0a;
+  --success-solid: #1f7a0a;
+  --success-solid-dark: #145206;
+  --link: #1368ce;
+  --placeholder: #9a94ad;
+  --shadow: 0 2px 6px rgba(43, 13, 99, 0.08);
+  --shadow-strong: 0 8px 30px rgba(43, 13, 99, 0.12);
+}
+
+/* Dark: lighter text colours for contrast on dark surfaces; solid backgrounds stay saturated
+   so white text on them still reads well. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #13101b;
+    --surface: #1d1928;
+    --surface-hover: #252036;
+    --border: #352e49;
+    --text: #ece8f4;
+    --muted: #a59fba;
+    --primary: #b79cff;
+    --brand: #5b2db5;
+    --brand-dark: #2b0d63;
+    --danger: #ff7a8e;
+    --danger-border: #5a2733;
+    --success: #6bd14a;
+    --success-solid: #2c8a12;
+    --success-solid-dark: #17520a;
+    --link: #7db3ff;
+    --placeholder: #776f8e;
+    --shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    --shadow-strong: 0 8px 30px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #13101b;
+  --surface: #1d1928;
+  --surface-hover: #252036;
+  --border: #352e49;
+  --text: #ece8f4;
+  --muted: #a59fba;
+  --primary: #b79cff;
+  --brand: #5b2db5;
+  --brand-dark: #2b0d63;
+  --danger: #ff7a8e;
+  --danger-border: #5a2733;
+  --success: #6bd14a;
+  --success-solid: #2c8a12;
+  --success-solid-dark: #17520a;
+  --link: #7db3ff;
+  --placeholder: #776f8e;
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-strong: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
 /* Page-wide basics that inline styles can't express (pseudo-classes, element defaults). */
 html,
 body {
   margin: 0;
-  background: #f2f0f7;
-  color: #1b1b1f;
+  background: var(--bg);
+  color: var(--text);
   font-family: 'Montserrat', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -28,7 +99,7 @@ button {
   transition: transform 0.05s, filter 0.15s;
 }
 button:not(:disabled):hover {
-  filter: brightness(1.06);
+  filter: brightness(1.08);
 }
 button:not(:disabled):active {
   transform: translateY(2px);
@@ -40,27 +111,27 @@ button:disabled {
 
 /* A clear keyboard focus ring everywhere. */
 :focus-visible {
-  outline: 3px solid #1368ce;
+  outline: 3px solid var(--link);
   outline-offset: 2px;
 }
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: #46178f !important;
+  border-color: var(--primary) !important;
   outline: none;
 }
 
 th {
-  color: #6b6680;
+  color: var(--muted);
   font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 tbody tr:hover td {
-  background: #faf8fd;
+  background: var(--surface-hover);
 }
 
 ::placeholder {
-  color: #9a94ad;
+  color: var(--placeholder);
 }

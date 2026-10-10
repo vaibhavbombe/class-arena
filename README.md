@@ -33,6 +33,8 @@ first request after it has been idle can take ~50 seconds)
   questions (5–120 seconds each), then run it as a Kahoot-style game: a 6-digit PIN and lobby, coloured
   answer tiles with shapes, a countdown, a reveal with the answer chart and top 5, and a final podium.
   Students play on their phones (enrolled students only). Results of past games are kept per quiz.
+- **Light and dark mode:** System (follows the device), Light or Dark, switchable from the header or the
+  login pages and remembered per device.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
 
 ## Stack
@@ -97,6 +99,10 @@ Vercel (client), Render (server)
   per-question stats are saved to MongoDB; Redis keys expire after 3 hours.
 - **Joining needs the PIN and enrolment in the class.** A wrong PIN and a PIN for another class get the
   same "not found", so PINs can't be probed.
+- **Theming with CSS variables.** Every colour in the UI is a CSS variable with a light and a dark value,
+  so switching theme only changes one attribute on `<html>`. A tiny script in `index.html` applies the
+  saved choice before the first paint, so dark-mode users never see a white flash. Solid colours used
+  behind white text (buttons, header) have their own tokens so they stay readable in both modes.
 - **Password rules are enforced on the server** (8–72 characters with upper and lower case, a number
   and a special character) wherever a password is set; the form's live checklist is only a hint.
   Login doesn't apply them, so older accounts still work. The 72 cap is because bcrypt ignores

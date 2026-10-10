@@ -1,5 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { logout } from '../session.js'
+import ThemeToggle from './ThemeToggle.jsx'
 import { FONT, colors } from '../styles.js'
 
 const navLinkStyle = ({ isActive }) => ({
@@ -28,7 +29,7 @@ export default function AppHeader({ me }) {
   return (
     <header
       style={{
-        background: `linear-gradient(120deg, ${colors.primary}, ${colors.primaryDark})`,
+        background: `linear-gradient(120deg, ${colors.brand}, ${colors.brandDark})`,
         color: '#FFFFFF',
         fontFamily: FONT,
         margin: '0 calc(50% - 50vw) 1.5rem',
@@ -46,7 +47,8 @@ export default function AppHeader({ me }) {
             {me.user.name}
             <span style={{ marginLeft: '0.4rem', background: 'rgba(255,255,255,0.2)', borderRadius: '999px', padding: '0.1rem 0.55rem', fontSize: '0.75rem' }}>{me.user.role}</span>
           </span>
-          <button onClick={handleLogout} style={{ background: 'transparent', color: '#FFFFFF', border: '2px solid rgba(255,255,255,0.5)', borderRadius: '8px', padding: '0.3rem 0.75rem', fontFamily: FONT, fontWeight: 700, cursor: 'pointer' }}>
+          <ThemeToggle onBrand />
+          <button onClick={handleLogout} style={{ background: 'transparent', color: '#FFFFFF', border: '2px solid rgba(255,255,255,0.5)', borderRadius: '8px', padding: '0.3rem 0.75rem', fontFamily: FONT, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             Log out
           </button>
         </div>

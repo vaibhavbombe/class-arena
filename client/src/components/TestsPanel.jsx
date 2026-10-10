@@ -21,7 +21,7 @@ const actionLink = { ...buttonStyle, textDecoration: 'none', display: 'inline-bl
 function MyProgress({ test }) {
   const attempt = test.myAttempt
   if (attempt?.status === 'submitted' && attempt.score !== undefined) {
-    return <Link to={`/tests/${test.id}`} style={{ ...actionLink, background: colors.success, boxShadow: '0 3px 0 #145206' }}>{attempt.score}/{attempt.maxScore} · Review</Link>
+    return <Link to={`/tests/${test.id}`} style={{ ...actionLink, background: colors.successSolid, boxShadow: `0 3px 0 ${colors.successSolidDark}` }}>{attempt.score}/{attempt.maxScore} · Review</Link>
   }
   if (attempt?.status === 'submitted') return <span style={{ color: colors.success, fontWeight: 800 }}>✓ Submitted</span>
   if (attempt) return <Link to={`/tests/${test.id}`} style={actionLink}>Continue ▸</Link>

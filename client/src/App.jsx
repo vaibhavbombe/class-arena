@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import ThemeToggle from './components/ThemeToggle.jsx'
 import { watchOtherTabs } from './session.js'
 import AcceptInvite from './pages/AcceptInvite.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
@@ -16,11 +17,19 @@ import StudentSignup from './pages/StudentSignup.jsx'
 import TestPage from './pages/TestPage.jsx'
 import TestResults from './pages/TestResults.jsx'
 
+// Pages without the app header still get a theme switch (the header has its own).
+const PUBLIC_PAGES = ['/login', '/signup', '/join', '/accept-invite', '/forgot-password', '/reset-password']
+function PublicThemeToggle() {
+  const { pathname } = useLocation()
+  return PUBLIC_PAGES.includes(pathname) ? <ThemeToggle /> : null
+}
+
 export default function App() {
   useEffect(watchOtherTabs, [])
 
   return (
     <BrowserRouter>
+      <PublicThemeToggle />
       <Routes>
         <Route path="/" element={<Navigate to={localStorage.getItem('accessToken') ? '/dashboard' : '/login'} replace />} />
         <Route path="/login" element={<Login />} />
