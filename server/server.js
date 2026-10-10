@@ -1,7 +1,10 @@
 require('dotenv').config()
+const http = require('http')
 const express = require('express')
 const cors = require('cors')
 const connectMongo = require('./config/mongo')
+const { getRedis, redisStatus } = require('./lib/redis')
+const { attachRealtime } = require('./realtime')
 
 const app = express()
 app.use(cors({ origin: process.env.CLIENT_URL }))
@@ -9,7 +12,11 @@ app.use(express.json())
 
 // For Render's health check. No database call, so it stays cheap.
 // `commit` (set by Render) shows which version is live; the repo is public, so it's not secret.
-app.get('/api/health', (req, res) => res.json({ ok: true, commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? 'local' }))
+app.get('/api/health', (req, res) => res.json({
+  ok: true,
+  commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? 'local',
+  redis: redisStatus(),
+}))
 
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
@@ -30,9 +37,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Server error' })
 })
 
+// One HTTP server shared by Express and Socket.io (same port, so Render needs no extra setup).
+const httpServer = http.createServer(app)
+attachRealtime(httpServer)
+
 const PORT = process.env.PORT || 5002
 connectMongo()
-  .then(() => app.listen(PORT, () => console.log(`Server running on port ${PORT}`)))
+  .then(() => {
+    getRedis() // connects in the background; /api/health reports its status
+    httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+  })
   .catch((err) => {
     console.error('Startup failed:', err)
     process.exit(1)

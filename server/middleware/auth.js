@@ -1,6 +1,28 @@
 const jwt = require('jsonwebtoken')
 const User = require('../models/User')
 
+// Verifies an access token and loads who it belongs to. Shared by HTTP requests and
+// Socket.io connections. Returns { identity } or { error }.
+async function authenticateToken(token) {
+  let payload
+  try {
+    payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
+  } catch {
+    return { error: 'Invalid or expired token' }
+  }
+
+  // Still look the user up: a deleted user or a changed role takes effect
+  // immediately instead of after the 15 minute token lifetime.
+  const user = await User.findById(payload.userId).select('institutionId role name')
+  if (!user || user.institutionId.toString() !== payload.institutionId) {
+    return { error: 'User no longer exists' }
+  }
+
+  return {
+    identity: { userId: user._id.toString(), institutionId: payload.institutionId, role: user.role, name: user.name },
+  }
+}
+
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization
 
@@ -8,25 +30,12 @@ async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'No token provided' })
   }
 
-  const token = header.split(' ')[1]
+  const { identity, error } = await authenticateToken(header.split(' ')[1])
+  if (error) return res.status(401).json({ error })
 
-  let payload
-  try {
-    payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired token' })
-  }
-
-  // Still look the user up: a deleted user or a changed role takes effect
-  // immediately instead of after the 15 minute token lifetime.
-  const user = await User.findById(payload.userId).select('institutionId role')
-  if (!user || user.institutionId.toString() !== payload.institutionId) {
-    return res.status(401).json({ error: 'User no longer exists' })
-  }
-
-  req.userId = user._id.toString()
-  req.institutionId = payload.institutionId
-  req.role = user.role
+  req.userId = identity.userId
+  req.institutionId = identity.institutionId
+  req.role = identity.role
   next()
 }
 
@@ -40,4 +49,4 @@ function requireRole(...allowedRoles) {
   }
 }
 
-module.exports = { requireAuth, requireRole }
+module.exports = { authenticateToken, requireAuth, requireRole }
