@@ -2,7 +2,9 @@
 
 A multi-tenant classroom and competition platform for institutes. **Work in progress:**
 Phases 1 (accounts, roles, classes) and 2 (question bank, timed tests, server-side grading,
-results) are built. Live quizzes, coding contests and AI features are planned and do not exist yet.
+results) are built. Phase 3 (live quiz battles) is in progress: the real-time foundation and quiz
+authoring exist; the game itself does not yet. Coding contests and AI features are planned and do not
+exist yet.
 
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
 first request after it has been idle can take ~50 seconds)
@@ -27,6 +29,8 @@ first request after it has been idle can take ~50 seconds)
   explanations once the test closes (or when the teacher releases them early). Teachers get every
   enrolled student's status and score, average/median/highest/lowest, % correct per question,
   each student's marked answers, and a CSV export.
+- **Live quizzes** (authoring only so far): teachers build a quiz for a class from multiple choice and
+  multi-select bank questions, with 5–120 seconds per question. Running a game is not built yet.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
 
 ## Stack
@@ -134,14 +138,14 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 36 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 41 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers) and results statistics.
-- **Integration tests** (`npm run test:integration`, 11 suites, 150 checks): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 12 suites, 162 checks): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
-  race between autosaves and submit, and Socket.io authentication. The runner refuses databases whose names don't end in `-dev`
+  race between autosaves and submit, Socket.io authentication, and live quiz authoring. The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
 - Not covered: the React UI, load/performance, and email delivery itself.
 
@@ -176,6 +180,8 @@ Server environment variables:
 | PUT | `/api/tests/:id/attempt/answers` | student (autosave) |
 | POST | `/api/tests/:id/attempt/submit` | student |
 | POST | `/api/tests/:id/release` (`{ released }`) | class teacher, admin |
+| GET / POST | `/api/live-quizzes` (`?classId=`) | class teacher, admin |
+| GET / PUT / DELETE | `/api/live-quizzes/:id` | class teacher, admin |
 | GET | `/api/tests/:id/results` | class teacher, admin |
 | GET | `/api/tests/:id/results/:studentId` | class teacher, admin |
 

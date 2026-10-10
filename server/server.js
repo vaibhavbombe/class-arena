@@ -21,6 +21,7 @@ app.get('/api/health', (req, res) => res.json({
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))
+app.use('/api/live-quizzes', require('./routes/liveQuizzes'))
 // Before /api/tests, so attempt URLs never pass through the tests router first.
 app.use('/api/tests/:testId/attempt', require('./routes/attempts'))
 app.use('/api/tests', require('./routes/tests'))

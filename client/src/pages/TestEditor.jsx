@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
 import { TYPE_LABELS } from '../components/QuestionEditor.jsx'
+import QuestionPicker from '../components/QuestionPicker.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
 import { buttonStyle, colors, ghostButtonStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
@@ -44,8 +45,6 @@ export default function TestEditor() {
   const [test, setTest] = useState(null)
   const [settings, setSettings] = useState(null)
   const [items, setItems] = useState([]) // [{ questionId, points, prompt, type, ... }]
-  const [bank, setBank] = useState([])
-  const [search, setSearch] = useState('')
   const [dirty, setDirty] = useState(false)
   const [message, setMessage] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -64,17 +63,6 @@ export default function TestEditor() {
   }, [id])
 
   const isDraft = test?.status === 'draft'
-
-  // Question picker (drafts only).
-  useEffect(() => {
-    if (!isDraft) return
-    const timer = setTimeout(() => {
-      api.get('/api/questions', { params: search ? { q: search } : {} })
-        .then((response) => setBank(response.data))
-        .catch(() => setBank([]))
-    }, 250)
-    return () => clearTimeout(timer)
-  }, [isDraft, search])
 
   function setField(field, value) {
     setSettings((current) => ({ ...current, [field]: value }))
@@ -271,28 +259,7 @@ export default function TestEditor() {
         {message && <span role="status" style={{ ...messageStyle(message.ok), marginTop: 0 }}>{message.text}</span>}
       </div>
 
-      {isDraft && (
-        <section>
-          <h3 style={sectionTitleStyle}>Add from question bank</h3>
-          <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your questions" aria-label="Search your questions" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
-          {bank.length === 0 && (
-            <p style={{ color: colors.muted, fontSize: '0.85rem' }}>
-              No questions found. <Link to="/questions" style={linkStyle}>Add some in the question bank</Link>.
-            </p>
-          )}
-          {bank.map((question) => (
-            <article key={question._id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center' }}>
-              <div style={{ minWidth: 0 }}>
-                <span style={{ fontSize: '0.75rem', color: colors.violet }}>{TYPE_LABELS[question.type]}</span>
-                <p style={{ margin: '0.2rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{question.prompt}</p>
-              </div>
-              <button onClick={() => addQuestion(question)} disabled={addedIds.has(question._id)} style={{ ...smallButton, flexShrink: 0 }}>
-                {addedIds.has(question._id) ? 'Added' : '+ Add'}
-              </button>
-            </article>
-          ))}
-        </section>
-      )}
+      {isDraft && <QuestionPicker addedIds={addedIds} onAdd={addQuestion} />}
     </div>
   )
 }
