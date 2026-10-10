@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
-import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, messageStyle, narrowPageStyle } from '../styles.js'
+import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, messageStyle, narrowPageStyle, titleStyle } from '../styles.js'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -28,7 +28,7 @@ export default function ForgotPassword() {
 
   return (
     <main style={narrowPageStyle}>
-      <h1 style={{ color: colors.accent }}>Forgot password</h1>
+      <h1 style={titleStyle}>Forgot password</h1>
       {message ? (
         <>
           <p style={messageStyle(true)}>{message}</p>

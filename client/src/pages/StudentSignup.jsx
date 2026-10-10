@@ -4,7 +4,7 @@ import api from '../api.js'
 import { errorMessage, isLoggedIn, saveSession } from '../session.js'
 import PasswordChecklist from '../components/PasswordChecklist.jsx'
 import { passwordIsValid } from '../passwordRules.js'
-import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle } from '../styles.js'
+import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle, titleStyle } from '../styles.js'
 
 // Students self-register with a class join code (/join?code=ABC234 pre-fills it).
 export default function StudentSignup() {
@@ -41,7 +41,7 @@ export default function StudentSignup() {
 
   return (
     <main style={narrowPageStyle}>
-      <h1 style={{ color: colors.accent }}>Join a class</h1>
+      <h1 style={titleStyle}>Join a class</h1>
       <p style={{ color: colors.muted, fontSize: '0.85rem' }}>Ask your teacher for the 6-character class code.</p>
       {alreadyLoggedIn && (
         <p style={{ color: colors.muted, fontSize: '0.85rem' }}>

@@ -6,7 +6,7 @@ import { TYPE_LABELS } from '../components/QuestionEditor.jsx'
 import QuestionPicker from '../components/QuestionPicker.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
-import { buttonStyle, colors, ghostButtonStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
+import { buttonStyle, colors, dangerButtonStyle, ghostButtonStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
 import { StatusBadge, fromLocalInput, toLocalInput, windowText } from '../testFormat.jsx'
 
 const labelStyle = { display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.85rem', color: colors.muted }
@@ -27,12 +27,12 @@ function settingsFrom(test) {
 
 function AnswerKey({ item }) {
   if (item.type === 'short') {
-    return <p style={{ margin: '0.3rem 0 0', fontSize: '0.8rem', color: colors.teal }}>Accepts: {item.acceptedAnswers.join(' · ')}</p>
+    return <p style={{ margin: '0.3rem 0 0', fontSize: '0.8rem', color: colors.success }}>Accepts: {item.acceptedAnswers.join(' · ')}</p>
   }
   return (
     <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem', fontSize: '0.8rem' }}>
       {item.options.map((option) => (
-        <li key={option.id} style={{ color: option.correct ? colors.teal : colors.muted }}>{option.correct ? '✓ ' : ''}{option.text}</li>
+        <li key={option.id} style={{ color: option.correct ? colors.success : colors.muted }}>{option.correct ? '✓ ' : ''}{option.text}</li>
       ))}
     </ul>
   )
@@ -229,7 +229,7 @@ export default function TestEditor() {
         <article key={String(item.questionId)} style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
             <div style={{ minWidth: 0 }}>
-              <span style={{ fontSize: '0.75rem', color: colors.violet }}>{index + 1}. {TYPE_LABELS[item.type]}</span>
+              <span style={{ fontSize: '0.75rem', color: colors.primary }}>{index + 1}. {TYPE_LABELS[item.type]}</span>
               <p style={{ margin: '0.2rem 0 0', whiteSpace: 'pre-wrap' }}>{item.prompt}</p>
               <AnswerKey item={item} />
             </div>
@@ -254,8 +254,8 @@ export default function TestEditor() {
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
         <button onClick={save} disabled={busy || !dirty} style={{ ...buttonStyle, opacity: busy || !dirty ? 0.6 : 1 }}>{busy ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}</button>
-        {isDraft && <button onClick={publish} disabled={busy || items.length === 0} style={{ ...ghostButtonStyle, color: colors.teal, borderColor: colors.teal }}>Publish</button>}
-        <button onClick={deleteTest} disabled={busy} style={{ ...ghostButtonStyle, color: colors.accent, borderColor: colors.accent }}>Delete test</button>
+        {isDraft && <button onClick={publish} disabled={busy || items.length === 0} style={{ ...ghostButtonStyle, color: colors.success, borderColor: colors.success }}>Publish</button>}
+        <button onClick={deleteTest} disabled={busy} style={dangerButtonStyle}>Delete test</button>
         {message && <span role="status" style={{ ...messageStyle(message.ok), marginTop: 0 }}>{message.text}</span>}
       </div>
 

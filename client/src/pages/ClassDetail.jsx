@@ -7,7 +7,7 @@ import LiveQuizzesPanel from '../components/LiveQuizzesPanel.jsx'
 import TestsPanel from '../components/TestsPanel.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
-import { cellStyle, codeStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
+import { cellStyle, codeStyle, colors, dangerButtonStyle, ghostButtonStyle, inlineFormStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, tableWrapStyle, widePageStyle } from '../styles.js'
 
 export default function ClassDetail() {
   const { id } = useParams()
@@ -114,7 +114,7 @@ export default function ClassDetail() {
               {cls.students.length === 0 ? (
                 <p style={{ color: colors.muted, fontSize: '0.85rem' }}>No students yet. Share the join code.</p>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
+                <div style={tableWrapStyle}>
                   <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -153,7 +153,7 @@ export default function ClassDetail() {
                     </select>
                   </label>
                 )}
-                <button onClick={deleteClass} style={{ ...ghostButtonStyle, color: colors.accent, borderColor: colors.accent }}>Delete class</button>
+                <button onClick={deleteClass} style={dangerButtonStyle}>Delete class</button>
               </div>
               {manageMsg && <p role="status" style={messageStyle(manageMsg.ok)}>{manageMsg.text}</p>}
             </>

@@ -233,11 +233,11 @@ export default function TakeTest({ me }) {
       {attempt.instructions && <p style={{ color: colors.muted, whiteSpace: 'pre-wrap', marginTop: 0 }}>{attempt.instructions}</p>}
 
       <div style={{ position: 'sticky', top: 0, zIndex: 1, background: colors.bg, borderBottom: `1px solid ${colors.border}`, padding: '0.6rem 0', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <span role="timer" aria-live="off" style={{ fontSize: '1.4rem', fontWeight: 'bold', color: lowTime ? colors.accent : colors.text }}>
+        <span role="timer" aria-live="off" style={{ fontSize: '1.4rem', fontWeight: 'bold', color: lowTime ? colors.danger : colors.text }}>
           {remaining === null ? '--:--' : formatRemaining(remaining)}
         </span>
         <span style={{ color: colors.muted, fontSize: '0.85rem' }}>{answeredCount}/{attempt.questions.length} answered</span>
-        <span role="status" style={{ fontSize: '0.8rem', color: saveState === 'error' ? colors.accent : colors.muted }}>{saveLabel}</span>
+        <span role="status" style={{ fontSize: '0.8rem', color: saveState === 'error' ? colors.danger : colors.muted }}>{saveLabel}</span>
         <button onClick={confirmSubmit} disabled={busy} style={{ ...buttonStyle, marginLeft: 'auto' }}>{busy ? 'Submitting…' : 'Submit'}</button>
       </div>
       {message && <p role="alert" style={messageStyle(message.ok)}>{message.text}</p>}
@@ -246,8 +246,8 @@ export default function TakeTest({ me }) {
         const answer = answers[question.index] || { selectedOptionIds: [], text: '' }
         const name = `q${question.index}`
         return (
-          <fieldset key={question.index} style={{ border: `1px solid ${colors.border}`, borderRadius: '8px', padding: '0.9rem 1rem', marginTop: '1rem' }}>
-            <legend style={{ fontSize: '0.8rem', color: colors.violet, padding: '0 0.3rem' }}>
+          <fieldset key={question.index} style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '1rem 1.15rem', marginTop: '1rem', boxShadow: '0 2px 6px rgba(43, 13, 99, 0.08)' }}>
+            <legend style={{ fontSize: '0.8rem', color: colors.primary, padding: '0 0.3rem' }}>
               Question {question.number} · {question.points} pt{question.points > 1 ? 's' : ''}{question.type === 'multi' ? ' · select all that apply' : ''}
             </legend>
             <p style={{ marginTop: 0, whiteSpace: 'pre-wrap' }}>{question.prompt}</p>

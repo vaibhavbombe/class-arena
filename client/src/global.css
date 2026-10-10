@@ -1,0 +1,66 @@
+/* Page-wide basics that inline styles can't express (pseudo-classes, element defaults). */
+html,
+body {
+  margin: 0;
+  background: #f2f0f7;
+  color: #1b1b1f;
+  font-family: 'Montserrat', 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The header bar spans the full screen width; this stops a sideways scrollbar on Windows. */
+body {
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  transition: transform 0.05s, filter 0.15s;
+}
+button:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+button:not(:disabled):active {
+  transform: translateY(2px);
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* A clear keyboard focus ring everywhere. */
+:focus-visible {
+  outline: 3px solid #1368ce;
+  outline-offset: 2px;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #46178f !important;
+  outline: none;
+}
+
+th {
+  color: #6b6680;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+tbody tr:hover td {
+  background: #faf8fd;
+}
+
+::placeholder {
+  color: #9a94ad;
+}

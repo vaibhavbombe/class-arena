@@ -7,7 +7,7 @@ import { TYPE_LABELS } from '../components/QuestionEditor.jsx'
 import { downloadCsv } from '../csv.js'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
-import { cellStyle, colors, ghostButtonStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
+import { cellStyle, colors, ghostButtonStyle, linkStyle, messageStyle, sectionTitleStyle, tableWrapStyle, widePageStyle } from '../styles.js'
 import { StatusBadge, formatWhen, windowText } from '../testFormat.jsx'
 
 const STATUS_TEXT = { not_started: 'Not started', in_progress: 'In progress', submitted: 'Submitted' }
@@ -23,7 +23,7 @@ function Stat({ label, value }) {
 
 function PercentBar({ percent }) {
   if (percent === null) return <span style={{ color: colors.muted }}>—</span>
-  const color = percent < 40 ? colors.accent : percent < 70 ? colors.violet : colors.teal
+  const color = percent < 40 ? colors.danger : percent < 70 ? colors.primary : colors.success
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
       <div aria-hidden="true" style={{ width: '6rem', height: '0.5rem', background: colors.border, borderRadius: '999px', overflow: 'hidden' }}>
@@ -116,10 +116,10 @@ export default function TestResults() {
       <p style={{ color: colors.muted, fontSize: '0.85rem' }}>{test.questionCount} questions · {test.totalPoints} points · {windowText(test)}</p>
 
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.85rem', color: test.resultsVisible ? colors.teal : colors.muted }}>{visibleNote}</span>
+        <span style={{ fontSize: '0.85rem', color: test.resultsVisible ? colors.success : colors.muted }}>{visibleNote}</span>
         {test.resultsReleasedAt
           ? <button onClick={() => setReleased(false)} style={ghostButtonStyle}>Hide results</button>
-          : !test.resultsVisible && <button onClick={() => setReleased(true)} style={{ ...ghostButtonStyle, color: colors.teal, borderColor: colors.teal }}>Release results now</button>}
+          : !test.resultsVisible && <button onClick={() => setReleased(true)} style={{ ...ghostButtonStyle, color: colors.success, borderColor: colors.success }}>Release results now</button>}
         <button onClick={exportCsv} style={ghostButtonStyle}>Export CSV</button>
       </div>
       {message && <p role="alert" style={messageStyle(message.ok)}>{message.text}</p>}
@@ -134,7 +134,7 @@ export default function TestResults() {
       {stats.inProgressCount > 0 && <p style={{ color: colors.muted, fontSize: '0.85rem' }}>{stats.inProgressCount} still in progress; statistics include submitted attempts only.</p>}
 
       <h3 style={sectionTitleStyle}>By question</h3>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={tableWrapStyle}>
         <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
@@ -163,7 +163,7 @@ export default function TestResults() {
       {students.length === 0 ? (
         <p style={{ color: colors.muted, fontSize: '0.85rem' }}>No students in this class yet.</p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={tableWrapStyle}>
           <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -182,7 +182,7 @@ export default function TestResults() {
                     {row.name}
                     <div style={{ color: colors.muted, fontSize: '0.75rem' }}>{row.email}{!row.enrolled ? ' · left the class' : ''}</div>
                   </td>
-                  <td style={{ ...cellStyle, color: row.status === 'submitted' ? colors.teal : colors.muted }}>
+                  <td style={{ ...cellStyle, color: row.status === 'submitted' ? colors.success : colors.muted }}>
                     {STATUS_TEXT[row.status]}{row.submittedBy === 'timeout' ? ' (time ran out)' : ''}
                   </td>
                   <td style={cellStyle}>{row.score === null ? '—' : `${row.score}/${row.maxScore}`}</td>

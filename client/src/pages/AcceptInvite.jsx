@@ -4,7 +4,7 @@ import api from '../api.js'
 import { errorMessage, isLoggedIn, saveSession } from '../session.js'
 import PasswordChecklist from '../components/PasswordChecklist.jsx'
 import { passwordIsValid } from '../passwordRules.js'
-import { buttonStyle, colors, errorStyle, formStyle, inputStyle, narrowPageStyle } from '../styles.js'
+import { buttonStyle, colors, errorStyle, formStyle, inputStyle, narrowPageStyle, titleStyle } from '../styles.js'
 
 // Teachers (and co-admins) land here from the invite email.
 export default function AcceptInvite() {
@@ -42,7 +42,7 @@ export default function AcceptInvite() {
 
   return (
     <main style={narrowPageStyle}>
-      <h1 style={{ color: colors.accent }}>Join your institute</h1>
+      <h1 style={titleStyle}>Join your institute</h1>
       {!token && <p role="alert" style={errorStyle}>This invite link is missing its token.</p>}
       {alreadyLoggedIn && (
         <p style={{ color: colors.muted, fontSize: '0.85rem' }}>

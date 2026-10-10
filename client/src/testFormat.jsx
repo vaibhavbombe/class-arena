@@ -27,9 +27,9 @@ export function windowText(test) {
 
 export const STATUS_COLORS = {
   draft: colors.muted,
-  upcoming: colors.violet,
-  open: colors.teal,
-  closed: colors.accent,
+  upcoming: colors.primary,
+  open: colors.success,
+  closed: colors.danger,
 }
 
 export function StatusBadge({ status }) {

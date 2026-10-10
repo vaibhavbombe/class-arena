@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
-import { buttonStyle, cellStyle, colors, linkStyle, messageStyle, sectionTitleStyle } from '../styles.js'
+import { buttonStyle, cardStyle, cellStyle, colors, linkStyle, messageStyle, sectionTitleStyle, tableWrapStyle } from '../styles.js'
 import { StatusBadge, windowText } from '../testFormat.jsx'
 
 function StaffProgress({ test }) {
@@ -15,16 +15,41 @@ function StaffProgress({ test }) {
   )
 }
 
+const actionLink = { ...buttonStyle, textDecoration: 'none', display: 'inline-block', padding: '0.55rem 1.2rem' }
+
+// The student's next step for a test, as a big button when there's something to do.
 function MyProgress({ test }) {
   const attempt = test.myAttempt
   if (attempt?.status === 'submitted' && attempt.score !== undefined) {
-    return <Link to={`/tests/${test.id}`} style={{ ...linkStyle, color: colors.teal }}>{attempt.score}/{attempt.maxScore} · review</Link>
+    return <Link to={`/tests/${test.id}`} style={{ ...actionLink, background: colors.success, boxShadow: '0 3px 0 #145206' }}>{attempt.score}/{attempt.maxScore} · Review</Link>
   }
-  if (attempt?.status === 'submitted') return <span style={{ color: colors.teal }}>Submitted</span>
-  if (attempt) return <Link to={`/tests/${test.id}`} style={{ ...linkStyle, fontWeight: 'bold' }}>Continue</Link>
-  if (test.status === 'open') return <Link to={`/tests/${test.id}`} style={{ ...linkStyle, fontWeight: 'bold' }}>Start</Link>
-  if (test.status === 'closed') return <span style={{ color: colors.accent }}>Missed</span>
-  return <span style={{ color: colors.muted }}>Not open yet</span>
+  if (attempt?.status === 'submitted') return <span style={{ color: colors.success, fontWeight: 800 }}>✓ Submitted</span>
+  if (attempt) return <Link to={`/tests/${test.id}`} style={actionLink}>Continue ▸</Link>
+  if (test.status === 'open') return <Link to={`/tests/${test.id}`} style={actionLink}>Start ▸</Link>
+  if (test.status === 'closed') return <span style={{ color: colors.danger, fontWeight: 800 }}>Missed</span>
+  return <span style={{ color: colors.muted, fontWeight: 700 }}>Opens later</span>
+}
+
+// Students get one card per test (works on a phone; no sideways scrolling to find "Start").
+function StudentTestCards({ tests }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      {tests.map((test) => (
+        <article key={test.id} style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: '1.05rem' }}>{test.title}</strong>
+              <StatusBadge status={test.status} />
+            </div>
+            <div style={{ color: colors.muted, fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem' }}>
+              {test.questionCount} questions · {test.totalPoints} pts · {test.durationMinutes} min · {windowText(test)}
+            </div>
+          </div>
+          <MyProgress test={test} />
+        </article>
+      ))}
+    </div>
+  )
 }
 
 // Tests in a class. Staff see drafts too and can create tests; students see published ones.
@@ -61,8 +86,10 @@ export default function TestsPanel({ classId, isStaff }) {
         <p style={{ color: colors.muted, fontSize: '0.85rem' }}>
           {isStaff ? 'No tests yet. Create one, add questions from your bank, then publish it.' : 'No tests have been published in this class yet.'}
         </p>
+      ) : !isStaff ? (
+        <StudentTestCards tests={tests} />
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={tableWrapStyle}>
           <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -71,7 +98,7 @@ export default function TestsPanel({ classId, isStaff }) {
                 <th style={cellStyle}>Questions</th>
                 <th style={cellStyle}>Duration</th>
                 <th style={cellStyle}>When</th>
-                <th style={cellStyle}>{isStaff ? 'Submitted' : 'You'}</th>
+                <th style={cellStyle}>Submitted</th>
               </tr>
             </thead>
             <tbody>
@@ -82,7 +109,7 @@ export default function TestsPanel({ classId, isStaff }) {
                   <td style={{ ...cellStyle, color: colors.muted }}>{test.questionCount} · {test.totalPoints} pts</td>
                   <td style={{ ...cellStyle, color: colors.muted }}>{test.durationMinutes} min</td>
                   <td style={{ ...cellStyle, color: colors.muted }}>{windowText(test)}</td>
-                  <td style={cellStyle}>{isStaff ? <StaffProgress test={test} /> : <MyProgress test={test} />}</td>
+                  <td style={cellStyle}><StaffProgress test={test} /></td>
                 </tr>
               ))}
             </tbody>
