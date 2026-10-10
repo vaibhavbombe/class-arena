@@ -33,6 +33,9 @@ first request after it has been idle can take ~50 seconds)
   questions (5–120 seconds each), then run it as a Kahoot-style game: a 6-digit PIN and lobby, coloured
   answer tiles with shapes, a countdown, a reveal with the answer chart and top 5, and a final podium.
   Students play on their phones (enrolled students only). Results of past games are kept per quiz.
+- **Class analytics** (teachers and admins): class average, participation, average by test over time,
+  topic mastery by question tag (weakest first), the hardest questions, and every student's average,
+  last score and missed tests, with a "needs attention" flag (average under 50% or 2+ missed tests).
 - **Light and dark mode:** System (follows the device), Light or Dark, switchable from the header or the
   login pages and remembered per device.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
@@ -99,6 +102,11 @@ Vercel (client), Render (server)
   per-question stats are saved to MongoDB; Redis keys expire after 3 hours.
 - **Joining needs the PIN and enrolment in the class.** A wrong PIN and a PIN for another class get the
   same "not found", so PINs can't be probed.
+- **Analytics are a pure function** (`lib/analytics.js`) over tests, submitted attempts and the current
+  roster, so the numbers are unit-tested. Participation counts only tests that have opened and only
+  students still in the class. Test copies keep their questions' tags; older tests fall back to the bank
+  question's current tags. Chart colours were checked with a palette validator (lightness band and
+  contrast) separately for the light and dark surfaces.
 - **Theming with CSS variables.** Every colour in the UI is a CSS variable with a light and a dark value,
   so switching theme only changes one attribute on `<html>`. A tiny script in `index.html` applies the
   saved choice before the first paint, so dark-mode users never see a white flash. Solid colours used
@@ -161,10 +169,10 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 47 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 54 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
-  students contains answers) and results statistics.
-- **Integration tests** (`npm run test:integration`, 13 suites, 191 checks): start the API on a spare
+  students contains answers), results statistics and class analytics.
+- **Integration tests** (`npm run test:integration`, 14 suites, 198 checks): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -211,6 +219,7 @@ Server environment variables:
 | GET | `/api/live-games?quizId=` · `/api/live-games/:id` | class teacher, admin (past games, results) |
 | Socket.io | `host:join/next/skip/end`, `player:join/answer` | host: class teacher or admin; player: enrolled student |
 | GET | `/api/tests/:id/results` | class teacher, admin |
+| GET | `/api/classes/:id/analytics` | class teacher, admin |
 | GET | `/api/tests/:id/results/:studentId` | class teacher, admin |
 
 ## Roadmap
