@@ -10,6 +10,15 @@ const cardStyle = { background: colors.surface, border: `1px solid ${colors.bord
 const badgeStyle = { fontSize: '0.75rem', border: `1px solid ${colors.border}`, borderRadius: '999px', padding: '0.1rem 0.5rem', color: colors.muted }
 
 function AnswerSummary({ question }) {
+  if (question.type === 'code') {
+    const { functionName, sampleTests, hiddenTests, timeLimitMs, referenceSolution } = question.code
+    return (
+      <p style={{ fontSize: '0.8rem', color: colors.muted, margin: '0.4rem 0 0' }}>
+        <code>{functionName}()</code> · {sampleTests.length} sample · {hiddenTests.length} hidden test{hiddenTests.length === 1 ? '' : 's'} · {timeLimitMs} ms
+        {referenceSolution ? ' · reference solution saved' : ''}
+      </p>
+    )
+  }
   if (question.type === 'short') {
     return <p style={{ fontSize: '0.8rem', color: colors.success, margin: '0.4rem 0 0' }}>Accepts: {question.acceptedAnswers.join(' · ')}{question.caseSensitive ? ' (case sensitive)' : ''}</p>
   }

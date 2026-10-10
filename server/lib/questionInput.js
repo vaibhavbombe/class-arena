@@ -3,7 +3,7 @@ const crypto = require('crypto')
 // Turns a request body into a clean question document, or explains what's wrong.
 // Pure function (no database), so it's unit-tested in test/questionInput.test.js.
 
-const TYPES = ['mcq', 'multi', 'short']
+const TYPES = ['mcq', 'multi', 'short', 'code']
 const DIFFICULTIES = ['easy', 'medium', 'hard']
 const LIMITS = {
   prompt: 5000,
@@ -15,6 +15,20 @@ const LIMITS = {
   maxAnswers: 10,
   tag: 30,
   maxTags: 10,
+  // Coding questions (limits match the judge's caps in judge/runner.js)
+  starterCode: 10000,
+  referenceSolution: 50000,
+  testJson: 10000, // characters of JSON per test input or expected value
+  minSampleTests: 1,
+  maxSampleTests: 10,
+  minHiddenTests: 1,
+  maxHiddenTests: 50,
+  minTimeMs: 100,
+  maxTimeMs: 5000,
+  defaultTimeMs: 1000,
+  minMemoryMb: 16,
+  maxMemoryMb: 128,
+  defaultMemoryMb: 32,
 }
 
 const isString = (value) => typeof value === 'string'
@@ -59,6 +73,57 @@ function cleanAcceptedAnswers(answers) {
   return { acceptedAnswers: cleaned }
 }
 
+// One test case: input is the argument list (solve(...input)), expected any JSON value.
+function cleanTest(test, label) {
+  if (!test || typeof test !== 'object') return { error: `${label}: each test needs an input and an expected value` }
+  if (!Array.isArray(test.input)) return { error: `${label}: input must be a list of arguments, e.g. [2, 3]` }
+  if (test.expected === undefined) return { error: `${label}: expected value is missing` }
+  const input = JSON.stringify(test.input)
+  const expected = JSON.stringify(test.expected)
+  if (input.length > LIMITS.testJson || expected.length > LIMITS.testJson) return { error: `${label}: test data is too large` }
+  // Round-trip through JSON so only plain data (no functions, no prototypes) is stored.
+  return { test: { input: JSON.parse(input), expected: JSON.parse(expected) } }
+}
+
+function cleanTests(tests, kind, min, max) {
+  if (!Array.isArray(tests) || tests.length < min || tests.length > max) {
+    return { error: `Give between ${min} and ${max} ${kind} tests` }
+  }
+  const cleaned = []
+  for (const [i, test] of tests.entries()) {
+    const result = cleanTest(test, `${kind[0].toUpperCase()}${kind.slice(1)} test ${i + 1}`)
+    if (result.error) return result
+    cleaned.push(result.test)
+  }
+  return { tests: cleaned }
+}
+
+function cleanCode(code) {
+  if (!code || typeof code !== 'object') return { error: 'code settings are required for a coding question' }
+  const { functionName, starterCode = '', referenceSolution = '', timeLimitMs = LIMITS.defaultTimeMs, memoryMb = LIMITS.defaultMemoryMb } = code
+  if (!isString(functionName) || !/^[A-Za-z_$][\w$]{0,63}$/.test(functionName)) return { error: 'functionName must be a valid JavaScript name, e.g. solve' }
+  if (!isString(starterCode) || starterCode.length > LIMITS.starterCode) return { error: `Starter code can be at most ${LIMITS.starterCode} characters` }
+  if (!isString(referenceSolution) || referenceSolution.length > LIMITS.referenceSolution) return { error: `The reference solution can be at most ${LIMITS.referenceSolution} characters` }
+  if (!Number.isInteger(timeLimitMs) || timeLimitMs < LIMITS.minTimeMs || timeLimitMs > LIMITS.maxTimeMs) return { error: `Time limit must be ${LIMITS.minTimeMs}-${LIMITS.maxTimeMs} ms` }
+  if (!Number.isInteger(memoryMb) || memoryMb < LIMITS.minMemoryMb || memoryMb > LIMITS.maxMemoryMb) return { error: `Memory limit must be ${LIMITS.minMemoryMb}-${LIMITS.maxMemoryMb} MB` }
+  const samples = cleanTests(code.sampleTests, 'sample', LIMITS.minSampleTests, LIMITS.maxSampleTests)
+  if (samples.error) return samples
+  const hidden = cleanTests(code.hiddenTests, 'hidden', LIMITS.minHiddenTests, LIMITS.maxHiddenTests)
+  if (hidden.error) return hidden
+  return {
+    code: {
+      language: 'javascript',
+      functionName,
+      starterCode: starterCode || `function ${functionName}() {\n  \n}\n`,
+      referenceSolution,
+      sampleTests: samples.tests,
+      hiddenTests: hidden.tests,
+      timeLimitMs,
+      memoryMb,
+    },
+  }
+}
+
 function parseQuestionInput(body) {
   if (!body || typeof body !== 'object') return { error: 'Request body is required' }
   const { type, prompt, explanation = '', difficulty = 'medium', caseSensitive = false } = body
@@ -83,9 +148,14 @@ function parseQuestionInput(body) {
     options: undefined,
     acceptedAnswers: undefined,
     caseSensitive: false,
+    code: undefined,
   }
 
-  if (type === 'short') {
+  if (type === 'code') {
+    const codeResult = cleanCode(body.code)
+    if (codeResult.error) return codeResult
+    question.code = codeResult.code
+  } else if (type === 'short') {
     const answerResult = cleanAcceptedAnswers(body.acceptedAnswers)
     if (answerResult.error) return answerResult
     question.acceptedAnswers = answerResult.acceptedAnswers
@@ -99,4 +169,4 @@ function parseQuestionInput(body) {
   return { question }
 }
 
-module.exports = { parseQuestionInput, LIMITS }
+module.exports = { parseQuestionInput, cleanTest, cleanCode, LIMITS }

@@ -12,6 +12,8 @@ import { StatusBadge, fromLocalInput, toLocalInput, windowText } from '../testFo
 const labelStyle = { display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.85rem', color: colors.muted }
 const cardStyle = { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '8px', padding: '0.7rem 0.9rem', marginTop: '0.5rem' }
 const smallButton = { ...ghostButtonStyle, padding: '0.2rem 0.5rem' }
+// Coding questions can't be graded inside tests yet, so the picker leaves them out.
+const TEST_TYPES = ['mcq', 'multi', 'short']
 
 function settingsFrom(test) {
   return {
@@ -259,7 +261,7 @@ export default function TestEditor() {
         {message && <span role="status" style={{ ...messageStyle(message.ok), marginTop: 0 }}>{message.text}</span>}
       </div>
 
-      {isDraft && <QuestionPicker addedIds={addedIds} onAdd={addQuestion} />}
+      {isDraft && <QuestionPicker addedIds={addedIds} onAdd={addQuestion} types={TEST_TYPES} />}
     </div>
   )
 }
