@@ -1,6 +1,12 @@
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <rect width="64" height="64" rx="14" fill="#0B0B0D"/>
-  <path d="M32 11 L50 18 V31 C50 42 42 50 32 54 C22 50 14 42 14 31 V18 Z" fill="none" stroke="#FF6B45" stroke-width="4" stroke-linejoin="round"/>
-  <circle cx="32" cy="28" r="5" fill="#7C6FF0"/>
-  <path d="M23 42 C23 36 27 34 32 34 C37 34 41 36 41 42" fill="none" stroke="#7C6FF0" stroke-width="4" stroke-linecap="round"/>
+  <!-- ClassArena: the four live-game answer tiles on the brand purple. -->
+  <rect width="64" height="64" rx="14" fill="#46178F"/>
+  <rect x="9" y="9" width="21" height="21" rx="5" fill="#E21B3C"/>
+  <rect x="34" y="9" width="21" height="21" rx="5" fill="#1368CE"/>
+  <rect x="9" y="34" width="21" height="21" rx="5" fill="#D89E00"/>
+  <rect x="34" y="34" width="21" height="21" rx="5" fill="#26890C"/>
+  <path d="M19.5 14.5 L25.5 24.5 H13.5 Z" fill="#FFFFFF"/>
+  <path d="M44.5 13.5 L50 19.5 L44.5 25.5 L39 19.5 Z" fill="#FFFFFF"/>
+  <circle cx="19.5" cy="44.5" r="5.5" fill="#FFFFFF"/>
+  <rect x="39.5" y="39.5" width="10" height="10" rx="1.5" fill="#FFFFFF"/>
 </svg>
