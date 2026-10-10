@@ -91,7 +91,10 @@ export default function ClassDetail() {
       {error && <p role="alert" style={messageStyle(false)}>{error}</p>}
       {cls && (
         <>
-          <h2 style={{ marginBottom: '0.25rem' }}>{cls.name}</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <h2 style={{ marginBottom: '0.25rem' }}>{cls.name}</h2>
+            {isStaff && <Link to={`/classes/${id}/analytics`} style={{ ...ghostButtonStyle, textDecoration: 'none' }}>📊 Analytics</Link>}
+          </div>
           <p style={{ color: colors.muted, marginTop: 0 }}>
             {cls.subject && `${cls.subject} · `}Teacher: {cls.teacher?.name}
           </p>

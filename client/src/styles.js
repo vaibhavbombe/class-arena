@@ -24,6 +24,7 @@ export const colors = {
   successSolid: 'var(--success-solid)',
   successSolidDark: 'var(--success-solid-dark)',
   link: 'var(--link)',
+  chart: 'var(--chart-1)', // chart marks (validated per theme)
 }
 
 const shadow = 'var(--shadow)'

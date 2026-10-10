@@ -10,6 +10,12 @@ const { requireAuth, requireRole } = require('../middleware/auth')
 const { rejectInvalid } = require('../lib/validate')
 const { normalizeJoinCode, withUniqueJoinCode } = require('../lib/joinCode')
 const { findVisibleClass } = require('../lib/classAccess')
+const LiveGame = require('../models/LiveGame')
+const Question = require('../models/Question')
+const { testStatus } = require('../lib/testRules')
+const { GRACE_MS } = require('../lib/attemptRules')
+const { finalizeAttempt } = require('../lib/finalizeAttempt')
+const { classAnalytics } = require('../lib/analytics')
 
 const router = express.Router()
 router.use(requireAuth)
@@ -91,6 +97,47 @@ router.post('/join', requireRole('student'), async (req, res) => {
 
   const teacher = await User.findById(cls.teacherId).select('name')
   res.status(201).json(classSummary(cls, { teacher }))
+})
+
+// Class analytics for its teacher and admins (see lib/analytics.js for what's computed).
+router.get('/:id/analytics', requireRole('teacher', 'admin'), async (req, res) => {
+  const cls = await findVisibleClass(req, req.params.id)
+  if (!cls) return res.status(404).json({ error: 'Class not found' })
+  const now = new Date()
+
+  const testDocs = await Test.find({ institutionId: req.institutionId, classId: cls._id, status: 'published' })
+  // Submit attempts whose time ran out, so they count (same as the results page does).
+  const overdue = await Attempt.find({ classId: cls._id, institutionId: req.institutionId, status: 'in_progress', deadline: { $lt: new Date(now.getTime() - GRACE_MS) } })
+  const testById = new Map(testDocs.map((test) => [test.id, test]))
+  for (const attempt of overdue) {
+    const test = testById.get(attempt.testId.toString())
+    if (test) await finalizeAttempt(attempt, test, 'timeout', attempt.deadline)
+  }
+
+  const [attempts, enrollments, liveGames] = await Promise.all([
+    Attempt.find({ classId: cls._id, institutionId: req.institutionId, status: 'submitted' }).select('testId studentId score maxScore submittedAt results'),
+    Enrollment.find({ classId: cls._id }).select('studentId'),
+    LiveGame.find({ classId: cls._id, institutionId: req.institutionId, status: 'ended' }).select('results.players'),
+  ])
+  const students = await User.find({ _id: { $in: enrollments.map((e) => e.studentId) }, institutionId: req.institutionId }).select('name')
+
+  // Older test copies have no tags: fall back to the bank question's current tags.
+  const untagged = testDocs.flatMap((test) => test.items.filter((item) => !item.tags?.length).map((item) => item.questionId))
+  const bank = untagged.length ? await Question.find({ _id: { $in: untagged }, institutionId: req.institutionId }).select('tags') : []
+
+  res.json(classAnalytics({
+    tests: testDocs.map((test) => ({
+      id: test.id,
+      title: test.title,
+      status: testStatus(test, now),
+      when: test.opensAt || test.publishedAt,
+      items: test.items.map((item) => ({ questionId: item.questionId.toString(), prompt: item.prompt, tags: item.tags })),
+    })),
+    attempts: attempts.map((attempt) => ({ ...attempt.toObject(), testId: attempt.testId.toString(), studentId: attempt.studentId.toString() })),
+    students: students.map((student) => ({ id: student.id, name: student.name })),
+    tagsByQuestionId: Object.fromEntries(bank.map((question) => [question.id, question.tags])),
+    liveGames: liveGames.map((game) => ({ playerCount: game.results?.players?.length || 0 })),
+  }))
 })
 
 router.get('/:id', async (req, res) => {

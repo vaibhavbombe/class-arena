@@ -91,6 +91,7 @@ function snapshotOf(question, points) {
     acceptedAnswers: question.acceptedAnswers ? [...question.acceptedAnswers] : undefined,
     caseSensitive: question.caseSensitive || false,
     explanation: question.explanation || '',
+    tags: question.tags ? [...question.tags] : [], // for topic analytics
   }
 }
 

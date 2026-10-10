@@ -17,6 +17,8 @@
   --success-solid: #1f7a0a;
   --success-solid-dark: #145206;
   --link: #1368ce;
+  /* Chart marks: validated (dataviz validator) for the light surface. */
+  --chart-1: #6e3fd1;
   --placeholder: #9a94ad;
   --shadow: 0 2px 6px rgba(43, 13, 99, 0.08);
   --shadow-strong: 0 8px 30px rgba(43, 13, 99, 0.12);
@@ -42,6 +44,7 @@
     --success-solid: #2c8a12;
     --success-solid-dark: #17520a;
     --link: #7db3ff;
+    --chart-1: #8f6cf0;
     --placeholder: #776f8e;
     --shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
     --shadow-strong: 0 8px 30px rgba(0, 0, 0, 0.5);
@@ -64,6 +67,7 @@
   --success-solid: #2c8a12;
   --success-solid-dark: #17520a;
   --link: #7db3ff;
+  --chart-1: #8f6cf0;
   --placeholder: #776f8e;
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   --shadow-strong: 0 8px 30px rgba(0, 0, 0, 0.5);
