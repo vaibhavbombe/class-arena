@@ -7,7 +7,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true
 
 const SUITES = [
   'auth', 'classes', 'passwordReset', 'passwordRules', 'members',
-  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics',
+  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge',
 ]
 const PORT = process.env.INTEGRATION_PORT || '5099'
 
@@ -53,7 +53,7 @@ async function main() {
     for (const suite of SUITES) {
       console.log(`=== ${suite}`)
       const code = await new Promise((resolve) => {
-        runNode(path.join('integration', `${suite}.js`), { API_URL: `http://localhost:${PORT}` }).on('exit', resolve)
+        runNode(path.join('integration', `${suite}.js`), { API_URL: `http://localhost:${PORT}`, REDIS_PREFIX: 'test' }).on('exit', resolve)
       })
       results.push({ suite, ok: code === 0 })
       console.log()

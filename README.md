@@ -36,6 +36,8 @@ first request after it has been idle can take ~50 seconds)
 - **Class analytics** (teachers and admins): class average, participation, average by test over time,
   topic mastery by question tag (weakest first), the hardest questions, and every student's average,
   last score and missed tests, with a "needs attention" flag (average under 50% or 2+ missed tests).
+- **Code judge (Phase 4, in progress):** the server-side judge for JavaScript exists and is tested, but
+  coding questions and the editor are not built yet, so students can't submit code so far.
 - **Light and dark mode:** System (follows the device), Light or Dark, switchable from the header or the
   login pages and remembered per device.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
@@ -102,6 +104,12 @@ Vercel (client), Render (server)
   per-question stats are saved to MongoDB; Redis keys expire after 3 hours.
 - **Joining needs the PIN and enrolment in the class.** A wrong PIN and a PIN for another class get the
   same "not found", so PINs can't be probed.
+- **Student code never runs in the API process.** The API puts a job on a Redis queue; a separate judge
+  worker process (restarted automatically, killed by a 30 s watchdog if a job hangs) runs it in a fresh
+  V8 isolate via `isolated-vm`: no Node APIs (no require, files, network, process or timers), a memory
+  cap per isolate, a CPU time limit per test, a fresh context per test so no state leaks between tests,
+  and capped output and console logs. The worker's environment holds only the Redis URL, not the
+  database URL, JWT secret or email keys. Hidden-test results contain only pass/fail, verdict and time.
 - **Analytics are a pure function** (`lib/analytics.js`) over tests, submitted attempts and the current
   roster, so the numbers are unit-tested. Participation counts only tests that have opened and only
   students still in the class. Test copies keep their questions' tags; older tests fall back to the bank
@@ -130,6 +138,10 @@ Vercel (client), Render (server)
 - Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
   httpOnly cookies would be safer.
 - There are no browser (end-to-end UI) tests; the UI has only been checked by hand.
+- The code judge runs JavaScript only. A V8 isolate is a weaker boundary than a kernel-level sandbox
+  (namespaces/seccomp, as in Judge0), and the worker shares the host with the API on Render's single
+  free instance; a dedicated judge host with a kernel sandbox would be the next step for untrusted
+  traffic at scale. Jobs are judged one at a time by a single worker.
 - Live games run on a single server instance (timers are in-process; Render's free tier runs one). Scaling
   out would need the Socket.io Redis adapter and a shared timer. The game hasn't been load-tested yet. See **Testing** below
   for what is covered.
@@ -140,7 +152,7 @@ Vercel (client), Render (server)
   If sending fails, the admin still gets the invite link to share by hand.
 
 ## Run locally
-Requires Node 20.19+ and a MongoDB Atlas (or local MongoDB) connection string.
+Requires Node 22 (the code judge uses `isolated-vm`; Node 20.19+ also works) and a MongoDB Atlas (or local MongoDB) connection string.
 
 ```powershell
 cd server
@@ -169,15 +181,17 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 54 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 73 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
-  students contains answers), results statistics and class analytics.
-- **Integration tests** (`npm run test:integration`, 14 suites, 198 checks): start the API on a spare
+  students contains answers), results statistics, class analytics, and the code judge (every verdict,
+  sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
+- **Integration tests** (`npm run test:integration`, 15 suites, 206 checks): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
-  race between autosaves and submit, Socket.io authentication, live quiz authoring, and full live
-  games over Socket.io (joining rules, timing, scoring, simultaneous answers, rejoin after refresh). The runner refuses databases whose names don't end in `-dev`
+  race between autosaves and submit, Socket.io authentication, live quiz authoring, full live games
+  over Socket.io (joining rules, timing, scoring, simultaneous answers, rejoin after refresh), and the
+  judge queue and worker (infinite loops, memory bombs, simultaneous submissions). The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
 - Not covered: the React UI, load/performance, and email delivery itself.
 

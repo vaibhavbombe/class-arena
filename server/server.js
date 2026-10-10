@@ -5,6 +5,8 @@ const cors = require('cors')
 const connectMongo = require('./config/mongo')
 const { getRedis, redisStatus } = require('./lib/redis')
 const { attachRealtime } = require('./realtime')
+const { startJudgeWorker } = require('./judge/supervisor')
+const { judgeStatus } = require('./judge/queue')
 
 const app = express()
 app.use(cors({ origin: process.env.CLIENT_URL }))
@@ -12,10 +14,11 @@ app.use(express.json())
 
 // For Render's health check. No database call, so it stays cheap.
 // `commit` (set by Render) shows which version is live; the repo is public, so it's not secret.
-app.get('/api/health', (req, res) => res.json({
+app.get('/api/health', async (req, res) => res.json({
   ok: true,
   commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? 'local',
   redis: redisStatus(),
+  judge: await judgeStatus(), // is a judge worker alive (heartbeat in Redis)?
 }))
 
 app.use('/api/auth', require('./routes/auth'))
@@ -51,6 +54,7 @@ const PORT = process.env.PORT || 5002
 connectMongo()
   .then(() => {
     getRedis() // connects in the background; /api/health reports its status
+    startJudgeWorker() // separate process that runs student code (judge/worker.js)
     httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`))
   })
   .catch((err) => {
