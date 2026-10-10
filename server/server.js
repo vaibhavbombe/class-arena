@@ -22,6 +22,7 @@ app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))
 app.use('/api/live-quizzes', require('./routes/liveQuizzes'))
+app.use('/api/live-games', require('./routes/liveGames'))
 // Before /api/tests, so attempt URLs never pass through the tests router first.
 app.use('/api/tests/:testId/attempt', require('./routes/attempts'))
 app.use('/api/tests', require('./routes/tests'))
@@ -33,6 +34,10 @@ app.use('/api', require('./routes/institute'))
 app.use((err, req, res, next) => {
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: 'Request body is not valid JSON' })
+  }
+  if (err.status === 503) {
+    // A dependency (e.g. Redis) isn't configured; the message is written to be safe to show.
+    return res.status(503).json({ error: err.message })
   }
   console.error('Unhandled error:', err)
   res.status(500).json({ error: 'Server error' })

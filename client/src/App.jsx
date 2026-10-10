@@ -6,7 +6,9 @@ import ClassDetail from './pages/ClassDetail.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import LiveQuizEditor from './pages/LiveQuizEditor.jsx'
+import HostGame from './pages/HostGame.jsx'
 import Login from './pages/Login.jsx'
+import PlayGame from './pages/PlayGame.jsx'
 import QuestionBank from './pages/QuestionBank.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import Signup from './pages/Signup.jsx'
@@ -33,6 +35,8 @@ export default function App() {
         <Route path="/tests/:id" element={<TestPage />} />
         <Route path="/tests/:id/results" element={<TestResults />} />
         <Route path="/live-quizzes/:id" element={<LiveQuizEditor />} />
+        <Route path="/live-games/:id/host" element={<HostGame />} />
+        <Route path="/play" element={<PlayGame />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

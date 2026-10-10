@@ -30,12 +30,12 @@ export default function AppHeader({ me }) {
       <p style={{ color: colors.muted }}>
         Logged in as {me.user.name} <span style={{ color: colors.teal }}>({me.user.role})</span>
       </p>
-      {isStaff && (
-        <nav aria-label="Main" style={{ display: 'flex', gap: '1.25rem', borderBottom: `1px solid ${colors.border}`, paddingBottom: '0.4rem' }}>
-          <NavLink to="/dashboard" style={navLinkStyle}>Classes</NavLink>
-          <NavLink to="/questions" style={navLinkStyle}>Question bank</NavLink>
-        </nav>
-      )}
+      <nav aria-label="Main" style={{ display: 'flex', gap: '1.25rem', borderBottom: `1px solid ${colors.border}`, paddingBottom: '0.4rem' }}>
+        <NavLink to="/dashboard" style={navLinkStyle}>Classes</NavLink>
+        {isStaff
+          ? <NavLink to="/questions" style={navLinkStyle}>Question bank</NavLink>
+          : <NavLink to="/play" style={navLinkStyle}>Join a live game</NavLink>}
+      </nav>
     </header>
   )
 }

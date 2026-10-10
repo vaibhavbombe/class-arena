@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
+import ActiveGamesBanner from '../components/ActiveGamesBanner.jsx'
 import LiveQuizzesPanel from '../components/LiveQuizzesPanel.jsx'
 import TestsPanel from '../components/TestsPanel.jsx'
 import { errorMessage } from '../session.js'
@@ -95,6 +96,7 @@ export default function ClassDetail() {
             {cls.subject && `${cls.subject} · `}Teacher: {cls.teacher?.name}
           </p>
 
+          <ActiveGamesBanner classId={id} isStaff={isStaff} />
           <TestsPanel classId={id} isStaff={isStaff} />
           {isStaff && <LiveQuizzesPanel classId={id} />}
 
