@@ -4,7 +4,7 @@ import api from '../api.js'
 import { errorMessage } from '../session.js'
 import PasswordChecklist from '../components/PasswordChecklist.jsx'
 import { passwordIsValid } from '../passwordRules.js'
-import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle } from '../styles.js'
+import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle, titleStyle } from '../styles.js'
 
 // Opened from the link in the reset email (/reset-password?token=...).
 export default function ResetPassword() {
@@ -44,7 +44,7 @@ export default function ResetPassword() {
 
   return (
     <main style={narrowPageStyle}>
-      <h1 style={{ color: colors.accent }}>Choose a new password</h1>
+      <h1 style={titleStyle}>Choose a new password</h1>
       {!token && <p role="alert" style={errorStyle}>This reset link is missing its token.</p>}
       <form onSubmit={handleSubmit} style={formStyle}>
         <input name="password" type="password" value={form.password} placeholder="New password" onChange={handleChange} minLength={8} required style={inputStyle} />

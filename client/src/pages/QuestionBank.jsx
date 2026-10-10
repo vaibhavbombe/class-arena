@@ -11,12 +11,12 @@ const badgeStyle = { fontSize: '0.75rem', border: `1px solid ${colors.border}`, 
 
 function AnswerSummary({ question }) {
   if (question.type === 'short') {
-    return <p style={{ fontSize: '0.8rem', color: colors.teal, margin: '0.4rem 0 0' }}>Accepts: {question.acceptedAnswers.join(' · ')}{question.caseSensitive ? ' (case sensitive)' : ''}</p>
+    return <p style={{ fontSize: '0.8rem', color: colors.success, margin: '0.4rem 0 0' }}>Accepts: {question.acceptedAnswers.join(' · ')}{question.caseSensitive ? ' (case sensitive)' : ''}</p>
   }
   return (
     <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', fontSize: '0.8rem' }}>
       {question.options.map((option) => (
-        <li key={option.id} style={{ color: option.correct ? colors.teal : colors.muted }}>{option.correct ? '✓ ' : ''}{option.text}</li>
+        <li key={option.id} style={{ color: option.correct ? colors.success : colors.muted }}>{option.correct ? '✓ ' : ''}{option.text}</li>
       ))}
     </ul>
   )
@@ -107,7 +107,7 @@ export default function QuestionBank() {
       {questions.map((question) => (
         <article key={question._id} style={cardStyle}>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ ...badgeStyle, color: colors.violet }}>{TYPE_LABELS[question.type]}</span>
+            <span style={{ ...badgeStyle, color: colors.primary }}>{TYPE_LABELS[question.type]}</span>
             <span style={badgeStyle}>{question.difficulty}</span>
             {question.tags.map((tag) => <span key={tag} style={badgeStyle}>#{tag}</span>)}
             {me.user.role === 'admin' && question.ownerName && <span style={{ fontSize: '0.75rem', color: colors.muted }}>by {question.ownerName}</span>}

@@ -7,7 +7,7 @@ import { TYPE_LABELS } from '../components/QuestionEditor.jsx'
 import QuestionPicker from '../components/QuestionPicker.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
-import { buttonStyle, colors, ghostButtonStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
+import { buttonStyle, colors, dangerButtonStyle, ghostButtonStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
 
 const LIVE_TYPES = ['mcq', 'multi']
 const SECONDS_CHOICES = [5, 10, 15, 20, 30, 45, 60, 90, 120]
@@ -124,11 +124,11 @@ export default function LiveQuizEditor() {
         <article key={String(item.questionId)} style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <div style={{ minWidth: 0, flex: '1 1 260px' }}>
-              <span style={{ fontSize: '0.75rem', color: colors.violet }}>{index + 1}. {TYPE_LABELS[item.type]}</span>
+              <span style={{ fontSize: '0.75rem', color: colors.primary }}>{index + 1}. {TYPE_LABELS[item.type]}</span>
               <p style={{ margin: '0.2rem 0 0', whiteSpace: 'pre-wrap' }}>{item.prompt}</p>
               <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem', fontSize: '0.8rem' }}>
                 {item.options.map((option) => (
-                  <li key={option.id} style={{ color: option.correct ? colors.teal : colors.muted }}>{option.correct ? '✓ ' : ''}{option.text}</li>
+                  <li key={option.id} style={{ color: option.correct ? colors.success : colors.muted }}>{option.correct ? '✓ ' : ''}{option.text}</li>
                 ))}
               </ul>
             </div>
@@ -149,8 +149,8 @@ export default function LiveQuizEditor() {
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
         <button onClick={save} disabled={busy || !dirty} style={{ ...buttonStyle, opacity: busy || !dirty ? 0.6 : 1 }}>{busy ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}</button>
-        <button onClick={startGame} disabled={busy || !quiz.items.length} style={{ ...buttonStyle, background: '#46178F', color: '#FFFFFF', opacity: quiz.items.length ? 1 : 0.6 }}>▶ Start game</button>
-        <button onClick={deleteQuiz} disabled={busy} style={{ ...ghostButtonStyle, color: colors.accent, borderColor: colors.accent }}>Delete live quiz</button>
+        <button onClick={startGame} disabled={busy || !quiz.items.length} style={{ ...buttonStyle, background: colors.success, boxShadow: '0 3px 0 #145206' }}>▶ Start game</button>
+        <button onClick={deleteQuiz} disabled={busy} style={dangerButtonStyle}>Delete live quiz</button>
         {message && <span role="status" style={{ ...messageStyle(message.ok), marginTop: 0 }}>{message.text}</span>}
       </div>
 

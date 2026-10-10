@@ -12,7 +12,7 @@ export default function PasswordChecklist({ password }) {
         // The length cap only matters once it's broken.
         if (ok && rule.label.startsWith('at most')) return null
         return (
-          <li key={rule.label} style={{ color: ok ? colors.teal : colors.muted }}>
+          <li key={rule.label} style={{ color: ok ? colors.success : colors.muted }}>
             {ok ? '✓' : '○'} {rule.label}
           </li>
         )

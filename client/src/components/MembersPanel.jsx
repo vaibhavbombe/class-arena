@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
-import { buttonStyle, cellStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, messageStyle, sectionTitleStyle } from '../styles.js'
+import { buttonStyle, cellStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, messageStyle, sectionTitleStyle, tableWrapStyle } from '../styles.js'
 
 // Admin only: everyone in the institute, plus the teacher invite form.
 export default function MembersPanel({ currentUserId }) {
@@ -71,7 +71,7 @@ export default function MembersPanel({ currentUserId }) {
           <option value="student">Students</option>
         </select>
       </div>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={tableWrapStyle}>
         <table style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
@@ -86,7 +86,7 @@ export default function MembersPanel({ currentUserId }) {
               <tr key={member._id}>
                 <td style={cellStyle}>{member.name}</td>
                 <td style={{ ...cellStyle, color: colors.muted }}>{member.email}</td>
-                <td style={{ ...cellStyle, color: colors.teal }}>{member.role}</td>
+                <td style={{ ...cellStyle, color: colors.success }}>{member.role}</td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>
                   {member._id === currentUserId ? (
                     <span style={{ color: colors.muted }}>you</span>

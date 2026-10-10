@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
-import { buttonStyle, cellStyle, codeStyle, colors, inlineFormStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle } from '../styles.js'
+import { buttonStyle, cellStyle, codeStyle, colors, inlineFormStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, tableWrapStyle } from '../styles.js'
 
 // Staff create classes and see join codes; students join by code.
 // The server already returns only the classes this user may see.
@@ -65,7 +65,7 @@ export default function ClassesPanel({ role }) {
           {isStaff ? 'No classes yet. Create one above.' : 'You are not in any classes yet.'}
         </p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={tableWrapStyle}>
           <table style={{ width: '100%', marginTop: '1rem', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
             <thead>
               <tr>

@@ -34,7 +34,7 @@ export default function QuestionPicker({ addedIds, onAdd, types }) {
       {bank.map((question) => (
         <article key={question._id} style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center' }}>
           <div style={{ minWidth: 0 }}>
-            <span style={{ fontSize: '0.75rem', color: colors.violet }}>{TYPE_LABELS[question.type]}</span>
+            <span style={{ fontSize: '0.75rem', color: colors.primary }}>{TYPE_LABELS[question.type]}</span>
             <p style={{ margin: '0.2rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{question.prompt}</p>
           </div>
           <button onClick={() => onAdd(question)} disabled={addedIds.has(question._id)} style={{ ...ghostButtonStyle, padding: '0.2rem 0.5rem', flexShrink: 0 }}>

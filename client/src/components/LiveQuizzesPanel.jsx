@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
-import { buttonStyle, cellStyle, colors, linkStyle, messageStyle, sectionTitleStyle } from '../styles.js'
+import { buttonStyle, cellStyle, colors, linkStyle, messageStyle, sectionTitleStyle, tableWrapStyle } from '../styles.js'
 
 export function formatSeconds(total) {
   const minutes = Math.floor(total / 60)
@@ -42,7 +42,7 @@ export default function LiveQuizzesPanel({ classId }) {
       {quizzes.length === 0 ? (
         <p style={{ color: colors.muted, fontSize: '0.85rem' }}>No live quizzes yet. Build one from your multiple choice and multi-select questions.</p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div style={tableWrapStyle}>
           <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
             <thead>
               <tr>

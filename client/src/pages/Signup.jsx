@@ -4,7 +4,7 @@ import api from '../api.js'
 import { errorMessage, saveSession } from '../session.js'
 import PasswordChecklist from '../components/PasswordChecklist.jsx'
 import { passwordIsValid } from '../passwordRules.js'
-import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle } from '../styles.js'
+import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, narrowPageStyle, titleStyle } from '../styles.js'
 
 // Creates a new institute; the person signing up becomes its admin.
 export default function Signup() {
@@ -39,7 +39,7 @@ export default function Signup() {
 
   return (
     <main style={narrowPageStyle}>
-      <h1 style={{ color: colors.accent }}>Create an institute</h1>
+      <h1 style={titleStyle}>Create an institute</h1>
       <p style={{ color: colors.muted, fontSize: '0.85rem' }}>You'll be its admin and can invite teachers.</p>
       <form onSubmit={handleSubmit} style={formStyle}>
         <input name="institutionName" value={form.institutionName} placeholder="Institute name" onChange={handleChange} required style={inputStyle} />

@@ -1,7 +1,7 @@
 import { colors } from '../styles.js'
 import { formatWhen } from '../testFormat.jsx'
 
-const mark = (ok) => (ok ? { symbol: '✓', color: colors.teal } : { symbol: '✗', color: colors.accent })
+const mark = (ok) => (ok ? { symbol: '✓', color: colors.success } : { symbol: '✗', color: colors.danger })
 
 // A marked attempt: score, then each question with the answer given and the correct one.
 // Used for a student's own results and for a teacher looking at one student.
@@ -18,9 +18,9 @@ export default function AttemptReview({ review }) {
       {review.questions.map((question) => {
         const { symbol, color } = mark(question.correct)
         return (
-          <article key={question.number} style={{ border: `1px solid ${colors.border}`, borderLeft: `3px solid ${color}`, borderRadius: '8px', padding: '0.8rem 1rem', marginTop: '0.75rem' }}>
+          <article key={question.number} style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderLeft: `5px solid ${color}`, borderRadius: '12px', padding: '0.8rem 1rem', marginTop: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem' }}>
-              <span style={{ color: colors.violet }}>Question {question.number}</span>
+              <span style={{ color: colors.primary }}>Question {question.number}</span>
               <span style={{ color }}>{symbol} {question.earned}/{question.points} pt{question.points > 1 ? 's' : ''}</span>
             </div>
             <p style={{ whiteSpace: 'pre-wrap', margin: '0.4rem 0' }}>{question.prompt}</p>
@@ -35,7 +35,7 @@ export default function AttemptReview({ review }) {
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.9rem' }}>
                 {question.options.map((option) => (
-                  <li key={option.id} style={{ display: 'flex', gap: '0.5rem', padding: '0.15rem 0', color: option.correct ? colors.teal : option.selected ? colors.accent : colors.muted }}>
+                  <li key={option.id} style={{ display: 'flex', gap: '0.5rem', padding: '0.15rem 0', color: option.correct ? colors.success : option.selected ? colors.danger : colors.muted }}>
                     <span aria-hidden="true" style={{ width: '1rem' }}>{option.selected ? (option.correct ? '✓' : '✗') : option.correct ? '○' : ''}</span>
                     <span>
                       {option.text}
