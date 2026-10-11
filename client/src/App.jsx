@@ -5,6 +5,7 @@ import { watchOtherTabs } from './session.js'
 import AcceptInvite from './pages/AcceptInvite.jsx'
 import ClassAnalytics from './pages/ClassAnalytics.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
+import ContestPage from './pages/ContestPage.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import LiveQuizEditor from './pages/LiveQuizEditor.jsx'
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/live-games/:id/host" element={<HostGame />} />
         <Route path="/play" element={<PlayGame />} />
         <Route path="/problems/:id" element={<ProblemPage />} />
+        <Route path="/contests/:id" element={<ContestPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

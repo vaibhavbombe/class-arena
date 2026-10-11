@@ -27,6 +27,7 @@ app.use('/api/questions', require('./routes/questions'))
 app.use('/api/live-quizzes', require('./routes/liveQuizzes'))
 app.use('/api/live-games', require('./routes/liveGames'))
 app.use('/api/problems', require('./routes/problems'))
+app.use('/api/contests', require('./routes/contests'))
 // Before /api/tests, so attempt URLs never pass through the tests router first.
 app.use('/api/tests/:testId/attempt', require('./routes/attempts'))
 app.use('/api/tests', require('./routes/tests'))

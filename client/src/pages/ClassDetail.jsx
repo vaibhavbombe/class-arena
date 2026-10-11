@@ -5,6 +5,7 @@ import AppHeader from '../components/AppHeader.jsx'
 import ActiveGamesBanner from '../components/ActiveGamesBanner.jsx'
 import LiveQuizzesPanel from '../components/LiveQuizzesPanel.jsx'
 import ProblemsPanel from '../components/ProblemsPanel.jsx'
+import ContestsPanel from '../components/ContestsPanel.jsx'
 import TestsPanel from '../components/TestsPanel.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
@@ -102,6 +103,7 @@ export default function ClassDetail() {
 
           <ActiveGamesBanner classId={id} isStaff={isStaff} />
           <TestsPanel classId={id} isStaff={isStaff} />
+          <ContestsPanel classId={id} isStaff={isStaff} />
           <ProblemsPanel classId={id} isStaff={isStaff} />
           {isStaff && <LiveQuizzesPanel classId={id} />}
 
