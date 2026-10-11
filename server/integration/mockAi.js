@@ -54,6 +54,15 @@ function startMockAi(port) {
       if (marker === 'MOCK_FLAKY' && count % 2 === 1) return reply('Sorry, I cannot produce JSON today.')
       const generate = /exactly (\d+) \w+ question\(s\) of type "(\w+)"/.exec(text)
       if (generate) return reply(JSON.stringify({ questions: generated(Number(generate[1]), generate[2], marker) }))
+      if (/short review of a student/.test(text)) {
+        const accepted = /Result: Accepted/.test(text)
+        return reply(JSON.stringify({
+          summary: accepted ? 'Mock review: a clean solution that passes every test.' : 'Mock review: close, but some tests fail.',
+          strengths: ['Mock strength: clear structure.'],
+          improvements: [marker === 'MOCK_CODE' ? 'Replace it with nums.reduce((a, b) => a + b, 0)' : 'Mock improvement: check the empty list.'],
+          complexity: 'Linear in the length of the list.',
+        }))
+      }
       if (marker === 'MOCK_CODE') return reply(JSON.stringify({ hint: 'Here you go: function solve(nums) { return nums.length }', focus: 'approach' }))
       return reply('```json\n' + JSON.stringify({ hint: `Mock hint at level ${level}: think about what happens with an empty list.`, focus: 'edge-cases' }) + '\n```')
     })
