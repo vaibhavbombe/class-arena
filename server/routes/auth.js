@@ -11,6 +11,8 @@ const { signAccessToken, issueRefreshToken, authResponse } = require('../lib/tok
 const { rejectInvalid } = require('../lib/validate')
 const { normalizeJoinCode } = require('../lib/joinCode')
 const { sendMail } = require('../lib/mailer')
+const { limitRequests, blockedBy, recordFailure, clear, tooMany } = require('../lib/rateLimit')
+const LIMITS = require('../lib/limits')
 
 const router = express.Router()
 const SALT_ROUNDS = 10
@@ -23,7 +25,7 @@ function hashToken(token) {
 
 // Signing up creates a brand new institute, and the signer becomes its admin.
 // Teachers join by invite; students join with a class code (/student-signup).
-router.post('/signup', async (req, res) => {
+router.post('/signup', limitRequests(LIMITS.signup.perIp), async (req, res) => {
   if (rejectInvalid(res, req.body, ['email', 'password', 'name', 'institutionName'], { newPassword: true })) return
   const { email, password, name, institutionName } = req.body
 
@@ -52,13 +54,20 @@ router.post('/signup', async (req, res) => {
 
 // Students don't need an invite: a class join code puts them in that class's
 // institute. The institute comes from the class, never from the request.
-router.post('/student-signup', async (req, res) => {
+router.post('/student-signup', limitRequests(LIMITS.studentSignup.perIp), async (req, res) => {
   if (rejectInvalid(res, req.body, ['email', 'password', 'name', 'joinCode'], { newPassword: true })) return
   const { email, password, name } = req.body
 
+  // Join codes are short, so wrong guesses from one IP are limited.
+  const wrongCodes = [{ ...LIMITS.studentSignup.wrongCodesPerIp, id: req.ip }]
+  const wait = await blockedBy(wrongCodes)
+  if (wait) return tooMany(res, wait, 'Too many wrong class codes.')
   const joinCode = normalizeJoinCode(req.body.joinCode)
   const cls = joinCode && await Class.findOne({ joinCode })
-  if (!cls) return res.status(404).json({ error: 'No class found with that code' })
+  if (!cls) {
+    await recordFailure(wrongCodes)
+    return res.status(404).json({ error: 'No class found with that code' })
+  }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS)
   let user
@@ -76,20 +85,32 @@ router.post('/student-signup', async (req, res) => {
   })
 })
 
-router.post('/login', async (req, res) => {
+router.post('/login', limitRequests(LIMITS.login.perIp), async (req, res) => {
   if (rejectInvalid(res, req.body, ['email', 'password'])) return
-  const { email, password } = req.body
+  const { password } = req.body
+  const email = req.body.email.toLowerCase().trim()
 
-  const user = await User.findOne({ email: email.toLowerCase().trim() })
+  // Checked before bcrypt, so a blocked guesser can't keep the server busy either. The same
+  // rules apply whether or not the account exists, so this doesn't reveal which emails do.
+  const failures = [
+    { ...LIMITS.login.failuresPerAccountAndIp, id: `${email}|${req.ip}` },
+    { ...LIMITS.login.failuresPerAccount, id: email },
+  ]
+  const wait = await blockedBy(failures)
+  if (wait) return tooMany(res, wait, 'Too many failed logins for this account.')
+
+  const user = await User.findOne({ email })
   // Same error for "no such user" and "wrong password", so emails can't be probed.
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    await recordFailure(failures)
     return res.status(401).json({ error: 'Invalid email or password' })
   }
+  await clear(failures[0].name, failures[0].id)
 
   res.json(await authResponse(user))
 })
 
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', limitRequests(LIMITS.refresh.perIp), async (req, res) => {
   if (rejectInvalid(res, req.body, ['refreshToken'])) return
 
   // Rotation: each refresh token is single-use. findOneAndDelete is atomic, so two
@@ -109,7 +130,7 @@ router.post('/refresh', async (req, res) => {
 // Always answers the same way, whether or not the email has an account, so the form
 // can't be used to find out who is registered. The email is sent in the background
 // so the response time doesn't give it away either.
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', limitRequests(LIMITS.forgotPassword.perIp), async (req, res) => {
   if (rejectInvalid(res, req.body, ['email'])) return
   res.json({ message: 'If an account exists for that email, a reset link is on its way.' })
 
@@ -140,7 +161,7 @@ async function sendResetEmail(email) {
   if (!delivery.sent) console.error('Password reset email not sent:', delivery.reason)
 }
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', limitRequests(LIMITS.resetPassword.perIp), async (req, res) => {
   if (rejectInvalid(res, req.body, ['token', 'password'], { newPassword: true })) return
   const { token, password } = req.body
 

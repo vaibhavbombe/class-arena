@@ -1,4 +1,6 @@
 const express = require('express')
+const { blockedBy, recordFailure, tooMany } = require('../lib/rateLimit')
+const LIMITS = require('../lib/limits')
 const mongoose = require('mongoose')
 const Class = require('../models/Class')
 const Enrollment = require('../models/Enrollment')
@@ -90,9 +92,15 @@ router.get('/', async (req, res) => {
 // A logged-in student joins another class. Only classes in their own institute
 // count: a code from a different institute behaves exactly like a wrong code.
 router.post('/join', requireRole('student'), async (req, res) => {
+  const wrongCodes = [{ ...LIMITS.classJoin.wrongCodesPerUser, id: req.userId }]
+  const wait = await blockedBy(wrongCodes)
+  if (wait) return tooMany(res, wait, 'Too many wrong class codes.')
   const joinCode = normalizeJoinCode(req.body?.joinCode)
   const cls = joinCode && await Class.findOne({ joinCode, institutionId: req.institutionId })
-  if (!cls) return res.status(404).json({ error: 'No class found with that code' })
+  if (!cls) {
+    await recordFailure(wrongCodes)
+    return res.status(404).json({ error: 'No class found with that code' })
+  }
 
   try {
     await Enrollment.create({ institutionId: req.institutionId, classId: cls._id, studentId: req.userId })

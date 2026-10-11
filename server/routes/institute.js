@@ -1,4 +1,6 @@
 const express = require('express')
+const { limitRequests } = require('../lib/rateLimit')
+const LIMITS = require('../lib/limits')
 const bcrypt = require('bcrypt')
 const crypto = require('crypto')
 const mongoose = require('mongoose')
@@ -109,7 +111,7 @@ router.post('/invites', requireAuth, requireRole('admin'), async (req, res) => {
 })
 
 // No auth here: the person accepting doesn't have an account yet.
-router.post('/invites/accept', async (req, res) => {
+router.post('/invites/accept', limitRequests(LIMITS.inviteAccept.perIp), async (req, res) => {
   if (rejectInvalid(res, req.body, ['token', 'password', 'name'], { newPassword: true })) return
   const { token, password, name } = req.body
 

@@ -10,6 +10,10 @@ const { judgeStatus, startJudgeListener } = require('./judge/queue')
 const { aiConfig, describeConfig } = require('./lib/ai/client')
 
 const app = express()
+// Behind Render's proxy the client IP is in X-Forwarded-For. Trust exactly as many proxy hops
+// as there are, so req.ip (used by rate limits) is the real client and can't be spoofed by
+// sending a fake X-Forwarded-For. Locally there is no proxy.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? (process.env.RENDER ? 1 : 0)))
 app.use(cors({ origin: process.env.CLIENT_URL }))
 app.use(express.json())
 
@@ -23,6 +27,12 @@ app.get('/api/health', async (req, res) => res.json({
   ai: aiConfig().enabled ? 'on' : 'off', // hints fall back to fixed text when off
 }))
 
+// TEMPORARY: checks how many proxies sit in front of the API, to set TRUST_PROXY_HOPS. Returns
+// counts and booleans only, never an address. Remove once production is verified.
+app.get('/api/debug/proxy-hops', (req, res) => {
+  const forwarded = (req.headers['x-forwarded-for'] || '').split(',').map((part) => part.trim()).filter(Boolean)
+  res.json({ forwardedEntries: forwarded.length, trustedHops: app.get('trust proxy'), ipIsFirstEntry: req.ip === forwarded[0], ipIsLastEntry: req.ip === forwarded.at(-1) })
+})
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))

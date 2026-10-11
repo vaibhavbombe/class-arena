@@ -8,12 +8,15 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true
 
 const SUITES = [
   'auth', 'classes', 'passwordReset', 'passwordRules', 'members',
-  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests', 'contests', 'hints', 'generator', 'feedback',
+  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests', 'contests', 'hints', 'generator', 'feedback', 'rateLimits',
 ]
 // Optional: npm run test:integration -- contests judge  (runs only those suites)
 const ONLY = process.argv.slice(2)
 const PORT = process.env.INTEGRATION_PORT || '5099'
 const AI_PORT = process.env.INTEGRATION_AI_PORT || '5098'
+const LIMITED_PORT = process.env.INTEGRATION_LIMITED_PORT || '5095'
+// Suites that need rate limits switched on run against a second API with fresh counters.
+const LIMITED_SUITES = ['rateLimits']
 
 function databaseName(uri) {
   try {
@@ -41,17 +44,22 @@ async function main() {
   // fake (integration/mockAi.js): a real OPENROUTER_API_KEY in .env is never used or charged.
   const mockAi = await startMockAi(AI_PORT)
   const aiEnv = { OPENROUTER_API_KEY: KEY, AI_MODEL: 'mock/model', AI_BASE_URL: `http://localhost:${AI_PORT}/v1`, AI_DISABLED: 'false' }
-  const server = runNode('server.js', { PORT, EMAIL_DISABLED: 'true', REDIS_PREFIX: 'test', ...aiEnv }, { onOutput: () => {} })
-  const ready = new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Server did not start within 30s')), 30000)
-    server.stdout.on('data', (chunk) => {
+  // The suites sign up hundreds of users from one IP, so rate limits are off for this API...
+  const server = runNode('server.js', { PORT, EMAIL_DISABLED: 'true', REDIS_PREFIX: 'test', RATE_LIMITS_DISABLED: 'true', ...aiEnv }, { onOutput: () => {} })
+  // ...and on for a second one used by the rate-limit suite, with a fresh key prefix.
+  const limitedPrefix = `test-rl-${Date.now()}`
+  const limited = runNode('server.js', { PORT: LIMITED_PORT, EMAIL_DISABLED: 'true', REDIS_PREFIX: limitedPrefix, AI_DISABLED: 'true', OPENROUTER_API_KEY: '' }, { onOutput: () => {} })
+  const started = (child, name) => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${name} did not start within 30s`)), 30000)
+    child.stdout.on('data', (chunk) => {
       if (chunk.toString().includes('Server running')) {
         clearTimeout(timer)
         resolve()
       }
     })
-    server.on('exit', (code) => reject(new Error(`Server exited early (code ${code})`)))
+    child.on('exit', (code) => reject(new Error(`${name} exited early (code ${code})`)))
   })
+  const ready = Promise.all([started(server, 'Server'), started(limited, 'Rate-limited server')])
 
   const results = []
   try {
@@ -60,13 +68,17 @@ async function main() {
     for (const suite of SUITES.filter((name) => !ONLY.length || ONLY.includes(name))) {
       console.log(`=== ${suite}`)
       const code = await new Promise((resolve) => {
-        runNode(path.join('integration', `${suite}.js`), { API_URL: `http://localhost:${PORT}`, REDIS_PREFIX: 'test', AI_MOCK_URL: `http://localhost:${AI_PORT}` }).on('exit', resolve)
+        const env = LIMITED_SUITES.includes(suite)
+          ? { API_URL: `http://localhost:${LIMITED_PORT}`, REDIS_PREFIX: limitedPrefix }
+          : { API_URL: `http://localhost:${PORT}`, REDIS_PREFIX: 'test', AI_MOCK_URL: `http://localhost:${AI_PORT}` }
+        runNode(path.join('integration', `${suite}.js`), env).on('exit', resolve)
       })
       results.push({ suite, ok: code === 0 })
       console.log()
     }
   } finally {
     server.kill()
+    limited.kill()
     mockAi.close()
   }
 
