@@ -8,7 +8,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true
 
 const SUITES = [
   'auth', 'classes', 'passwordReset', 'passwordRules', 'members',
-  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests', 'contests', 'hints', 'generator',
+  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests', 'contests', 'hints', 'generator', 'feedback',
 ]
 // Optional: npm run test:integration -- contests judge  (runs only those suites)
 const ONLY = process.argv.slice(2)

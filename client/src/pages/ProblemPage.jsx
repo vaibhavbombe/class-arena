@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
 import { MONO, ResultPanel, promptBody, verdictColor } from '../components/JudgeResult.jsx'
+import CodeFeedback from '../components/CodeFeedback.jsx'
 import { runInBrowser } from '../code/runInBrowser.js'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
@@ -210,6 +211,7 @@ export default function ProblemPage() {
           {message && <p role="alert" style={messageStyle(message.ok)}>{message.text}</p>}
           <ResultPanel title="Run" result={runResult} />
           <ResultPanel title="Submission" result={submitResult} />
+          <CodeFeedback problemId={id} submission={submitResult} canRequest={!isStaff} onFeedback={(feedback) => setSubmitResult((current) => ({ ...current, feedback }))} />
         </section>
       </div>
 

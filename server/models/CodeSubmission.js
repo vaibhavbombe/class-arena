@@ -18,6 +18,9 @@ const codeSubmissionSchema = new mongoose.Schema({
   // The student-safe per-test summary (samples in full, hidden as pass/fail + verdict).
   tests: { type: [mongoose.Schema.Types.Mixed], default: [] },
   judgedAt: { type: Date, default: null },
+  // AI (or fallback) review the student asked for after judging; written once (lib/ai/feedbackService.js).
+  feedback: { type: mongoose.Schema.Types.Mixed, default: null },
+  feedbackClaimedAt: { type: Date, default: null },
 }, { timestamps: true })
 
 codeSubmissionSchema.index({ problemId: 1, studentId: 1, createdAt: -1 })
