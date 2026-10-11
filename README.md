@@ -39,8 +39,13 @@ first request after it has been idle can take ~50 seconds)
 - **Coding questions (Phase 4, in progress):** teachers write JavaScript questions in the bank with a
   function to implement, starter code, visible sample tests, hidden tests, time/memory limits and an
   optional reference solution, and can "check with judge" to run that solution against every test
-  before saving. The student editor and submitting code are not built yet, and coding questions can't
-  be used in tests or live quizzes so far.
+  before saving.
+- **Coding practice:** teachers add coding questions to a class as practice problems. Students write code
+  in a Monaco editor, **Run** the sample tests in their browser (a Web Worker that's terminated if a test
+  runs past the time limit), and **Submit** to the server judge, which also runs the hidden tests.
+  Students see full details for samples and only pass/fail for hidden tests; teachers see who solved each
+  problem, attempts, best result and each student's code. Coding questions can't be used in timed tests or
+  live quizzes yet.
 - **Light and dark mode:** System (follows the device), Light or Dark, switchable from the header or the
   login pages and remembered per device.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
@@ -110,6 +115,12 @@ Vercel (client), Render (server)
 - **Hidden tests stay on the server.** Coding questions live in the staff-only question bank; students
   will only ever receive the sample tests. Test data is stored as plain JSON (round-tripped through
   `JSON.stringify`), and "check with judge" runs through the same sandboxed worker as students' code.
+- **Submissions are queued, not awaited.** Submit answers `202 queued` immediately; the worker's
+  result is saved by a listener on the judge's pub/sub channel, and the page polls the submission. So a
+  long queue never times out a request, and a result published while the API restarts is picked up the
+  next time anyone looks (a submission still queued after 3 minutes becomes "Judge Error"). Students can
+  submit once every 5 seconds (a Redis rate limit). The judge returns full details to the API only; the
+  API reduces hidden tests to pass/fail before saving or sending anything.
 - **Student code never runs in the API process.** The API puts a job on a Redis queue; a separate judge
   worker process (restarted automatically, killed by a 30 s watchdog if a job hangs) runs it in a fresh
   V8 isolate via `isolated-vm`: no Node APIs (no require, files, network, process or timers), a memory
@@ -187,11 +198,11 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 78 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 84 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 16 suites, 217 checks): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 17 suites, 237 checks): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -224,6 +235,10 @@ Server environment variables:
 | GET | `/api/questions/tags` | teacher, admin |
 | GET / PUT / DELETE | `/api/questions/:id` | owner, admin |
 | POST | `/api/questions/check-code` | teacher, admin (runs a solution against all tests in the judge) |
+| GET / POST | `/api/problems` (`?classId=`) | class members / class teacher, admin (assign a coding question) |
+| GET / DELETE | `/api/problems/:id` | class members (students: no hidden tests) / class teacher, admin |
+| POST | `/api/problems/:id/submit` | student in the class (queued; 1 per 5 s) |
+| GET | `/api/problems/:id/submissions/:submissionId` | the student who submitted, class teacher, admin |
 | GET | `/api/tests?classId=` | staff (all), students (published outlines) |
 | POST | `/api/tests` | class teacher, admin (creates a draft) |
 | GET | `/api/tests/:id` | staff (full, with answers), students (outline only) |

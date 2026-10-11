@@ -11,6 +11,7 @@ import LiveQuizEditor from './pages/LiveQuizEditor.jsx'
 import HostGame from './pages/HostGame.jsx'
 import Login from './pages/Login.jsx'
 import PlayGame from './pages/PlayGame.jsx'
+import ProblemPage from './pages/ProblemPage.jsx'
 import QuestionBank from './pages/QuestionBank.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import Signup from './pages/Signup.jsx'
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/live-quizzes/:id" element={<LiveQuizEditor />} />
         <Route path="/live-games/:id/host" element={<HostGame />} />
         <Route path="/play" element={<PlayGame />} />
+        <Route path="/problems/:id" element={<ProblemPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
