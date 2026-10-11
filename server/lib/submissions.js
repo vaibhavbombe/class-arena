@@ -1,3 +1,4 @@
+const mongoose = require('mongoose')
 const CodeSubmission = require('../models/CodeSubmission')
 const Problem = require('../models/Problem')
 const { studentResult } = require('./problemViews')
@@ -9,6 +10,7 @@ const STALE_MS = 3 * 60 * 1000
 // Saves a judge result onto its submission (student-safe summary only). Only moves
 // 'queued' -> 'done', so a duplicate message can't overwrite anything.
 async function finalizeSubmission(id, result) {
+  if (!mongoose.isValidObjectId(id)) return null // another kind of judge job (e.g. a test's coding answer)
   const submission = await CodeSubmission.findOne({ _id: id, status: 'queued' })
   if (!submission) return null
   const problem = await Problem.findById(submission.problemId).select('code.sampleTests')

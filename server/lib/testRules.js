@@ -92,6 +92,17 @@ function snapshotOf(question, points) {
     caseSensitive: question.caseSensitive || false,
     explanation: question.explanation || '',
     tags: question.tags ? [...question.tags] : [], // for topic analytics
+    // Coding questions: the tests and limits needed to grade (not the reference solution).
+    code: question.code
+      ? {
+        functionName: question.code.functionName,
+        starterCode: question.code.starterCode,
+        sampleTests: question.code.sampleTests.map(({ input, expected }) => ({ input, expected })),
+        hiddenTests: question.code.hiddenTests.map(({ input, expected }) => ({ input, expected })),
+        timeLimitMs: question.code.timeLimitMs,
+        memoryMb: question.code.memoryMb,
+      }
+      : undefined,
   }
 }
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { codeSchema } = require('./Question')
 
 // Each item is a copy of a bank question taken when it was added (and refreshed at
 // publish). After publishing, the copy never changes, so editing or deleting the bank
@@ -16,6 +17,7 @@ const itemSchema = new mongoose.Schema({
   caseSensitive: { type: Boolean, default: false },
   explanation: { type: String, default: '' },
   tags: { type: [String], default: undefined }, // copied for topic analytics (older tests lack it)
+  code: { type: codeSchema, default: undefined }, // coding questions (hidden tests stay server-side)
 }, { _id: false })
 
 const testSchema = new mongoose.Schema({

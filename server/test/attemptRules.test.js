@@ -81,3 +81,17 @@ test('a submitted attempt shows no questions', () => {
   const view = rules.studentAttemptView(t, { _id: 'a1', status: 'submitted', startedAt: new Date(), deadline: new Date(), submittedAt: new Date(), answers: [] })
   assert.equal(view.questions, undefined)
 })
+
+test('a coding item in a test shows samples to the student but never hidden tests', () => {
+  const t = sampleTest({
+    items: [{ type: 'code', points: 4, prompt: 'Write f', code: { functionName: 'f', starterCode: 'function f() {}', sampleTests: [{ input: [1], expected: 1 }], hiddenTests: [{ input: [424242], expected: 999999 }], timeLimitMs: 500, memoryMb: 32 } }],
+  })
+  const attempt = { _id: 'a1', status: 'in_progress', startedAt: new Date(), deadline: new Date(Date.now() + MIN), answers: rules.emptyAnswers(t), ...rules.layoutFor(t) }
+  const view = rules.studentAttemptView(t, attempt)
+  assert.equal(view.questions[0].code.hiddenTestCount, 1)
+  assert.equal(view.questions[0].options, undefined)
+  const json = JSON.stringify(view)
+  assert.ok(!json.includes('424242') && !json.includes('999999') && !json.includes('hiddenTests'))
+  assert.equal(rules.parseAnswer(t.items[0], { text: 'function f() { return 1 }' }).answer.text, 'function f() { return 1 }')
+  assert.match(rules.parseAnswer(t.items[0], { text: 'x'.repeat(50001) }).error, /at most/)
+})

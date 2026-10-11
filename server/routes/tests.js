@@ -10,6 +10,7 @@ const { findVisibleClass } = require('../lib/classAccess')
 const rules = require('../lib/testRules')
 const { GRACE_MS } = require('../lib/attemptRules')
 const { finalizeAttempt } = require('../lib/finalizeAttempt')
+const { settleCodeGrading } = require('../lib/codeGrading')
 const { summarize, reviewView } = require('../lib/results')
 
 const router = express.Router()
@@ -113,8 +114,6 @@ router.put('/:id', requireRole('teacher', 'admin'), async (req, res) => {
     const fresh = await Question.find(questionFilter(req, newIds))
     const freshById = new Map(fresh.map((question) => [question._id.toString(), question]))
     if (fresh.length !== newIds.length) return res.status(400).json({ error: 'Some questions were not found in your question bank' })
-    // Grading code inside timed tests comes in a later step; refuse clearly until then.
-    if (fresh.some((question) => question.type === 'code')) return res.status(400).json({ error: "Coding questions can't be added to tests yet" })
 
     changes.items = parsed.items.map(({ questionId, points }) => {
       const kept = existing.get(questionId)
@@ -178,7 +177,7 @@ router.get('/:id/results', requireRole('teacher', 'admin'), async (req, res) => 
   if (!test) return res.status(404).json({ error: 'Test not found' })
   await finalizeOverdue(test, now)
 
-  const attempts = await Attempt.find({ testId: test._id, institutionId: req.institutionId })
+  const attempts = await Promise.all((await Attempt.find({ testId: test._id, institutionId: req.institutionId })).map(settleCodeGrading))
   const enrollments = await Enrollment.find({ classId: test.classId }).select('studentId')
   const studentIds = [...new Set([...enrollments.map((e) => e.studentId.toString()), ...attempts.map((a) => a.studentId.toString())])]
   const students = await User.find({ _id: { $in: studentIds }, institutionId: req.institutionId }).select('name email')
@@ -214,7 +213,7 @@ router.get('/:id/results/:studentId', requireRole('teacher', 'admin'), async (re
   if (!mongoose.isValidObjectId(req.params.studentId)) return res.status(404).json({ error: 'Attempt not found' })
   await finalizeOverdue(test, new Date())
 
-  const attempt = await Attempt.findOne({ testId: test._id, studentId: req.params.studentId, institutionId: req.institutionId })
+  const attempt = await settleCodeGrading(await Attempt.findOne({ testId: test._id, studentId: req.params.studentId, institutionId: req.institutionId }))
   if (!attempt) return res.status(404).json({ error: 'This student has not started the test' })
   if (attempt.status !== 'submitted') return res.status(409).json({ error: 'This student is still taking the test' })
   const student = await User.findById(attempt.studentId).select('name email')

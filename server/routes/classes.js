@@ -18,6 +18,7 @@ const { testStatus } = require('../lib/testRules')
 const { GRACE_MS } = require('../lib/attemptRules')
 const { finalizeAttempt } = require('../lib/finalizeAttempt')
 const { classAnalytics } = require('../lib/analytics')
+const { settleCodeGrading } = require('../lib/codeGrading')
 
 const router = express.Router()
 router.use(requireAuth)
@@ -117,7 +118,7 @@ router.get('/:id/analytics', requireRole('teacher', 'admin'), async (req, res) =
   }
 
   const [attempts, enrollments, liveGames] = await Promise.all([
-    Attempt.find({ classId: cls._id, institutionId: req.institutionId, status: 'submitted' }).select('testId studentId score maxScore submittedAt results'),
+    Attempt.find({ classId: cls._id, institutionId: req.institutionId, status: 'submitted' }).select('testId studentId score maxScore submittedAt results codePending').then((list) => Promise.all(list.map(settleCodeGrading))),
     Enrollment.find({ classId: cls._id }).select('studentId'),
     LiveGame.find({ classId: cls._id, institutionId: req.institutionId, status: 'ended' }).select('results.players'),
   ])

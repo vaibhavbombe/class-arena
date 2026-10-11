@@ -1,9 +1,9 @@
 # ClassArena
 
-A multi-tenant classroom and competition platform for institutes. **Work in progress:**
-Phases 1 (accounts, roles, classes) and 2 (question bank, timed tests, server-side grading,
-results) are built. Phase 3 (live quiz battles) works end to end: authoring, Kahoot-style games with a
-server-run timer, speed-based scoring and a Redis leaderboard. Coding contests and AI features are
+A multi-tenant classroom and competition platform for institutes. **Work in progress:** built so far
+are accounts and classes (Phase 1), a question bank with timed, auto-graded tests (Phase 2),
+Kahoot-style live quiz battles (Phase 3), JavaScript coding questions judged in a sandbox, for practice
+and inside tests (Phase 4), and a class analytics dashboard. Live coding contests and AI features are
 planned and do not exist yet.
 
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
@@ -36,7 +36,7 @@ first request after it has been idle can take ~50 seconds)
 - **Class analytics** (teachers and admins): class average, participation, average by test over time,
   topic mastery by question tag (weakest first), the hardest questions, and every student's average,
   last score and missed tests, with a "needs attention" flag (average under 50% or 2+ missed tests).
-- **Coding questions (Phase 4, in progress):** teachers write JavaScript questions in the bank with a
+- **Coding questions:** teachers write JavaScript questions in the bank with a
   function to implement, starter code, visible sample tests, hidden tests, time/memory limits and an
   optional reference solution, and can "check with judge" to run that solution against every test
   before saving.
@@ -44,8 +44,11 @@ first request after it has been idle can take ~50 seconds)
   in a Monaco editor, **Run** the sample tests in their browser (a Web Worker that's terminated if a test
   runs past the time limit), and **Submit** to the server judge, which also runs the hidden tests.
   Students see full details for samples and only pass/fail for hidden tests; teachers see who solved each
-  problem, attempts, best result and each student's code. Coding questions can't be used in timed tests or
-  live quizzes yet.
+  problem, attempts, best result and each student's code.
+- **Coding questions in timed tests:** worth points like any other question. Students answer in the same
+  editor (autosaved, with Run on samples); after submit the judge grades each coding answer on the
+  hidden tests, for points in proportion to tests passed (3 of 4 on a 4-point question = 3 points).
+  Coding questions can't be used in live quizzes.
 - **Light and dark mode:** System (follows the device), Light or Dark, switchable from the header or the
   login pages and remembered per device.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
@@ -121,6 +124,12 @@ Vercel (client), Render (server)
   next time anyone looks (a submission still queued after 3 minutes becomes "Judge Error"). Students can
   submit once every 5 seconds (a Redis rate limit). The judge returns full details to the API only; the
   API reduces hidden tests to pass/fail before saving or sending anything.
+- **Coding answers in tests are graded after submit, atomically.** Other questions are graded at once; each
+  coding answer is queued for the judge against the hidden tests only (so hard-coding the visible samples
+  earns nothing). Each result sets that question's points and re-sums the score in a single MongoDB
+  update pipeline, so results arriving together can't overwrite each other. Grading always ends: results
+  missed by the listener are picked up when the attempt is next read, and after 3 minutes a lost job
+  scores 0 as "Judge Error".
 - **Student code never runs in the API process.** The API puts a job on a Redis queue; a separate judge
   worker process (restarted automatically, killed by a 30 s watchdog if a job hangs) runs it in a fresh
   V8 isolate via `isolated-vm`: no Node APIs (no require, files, network, process or timers), a memory
@@ -198,11 +207,11 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 84 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 88 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 17 suites, 237 checks): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 18 suites, 249 checks): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -260,7 +269,6 @@ Server environment variables:
 
 ## Roadmap
 3. Live quiz battles (Socket.io, Redis leaderboard)
-4. Coding problems with a sandboxed judge (including code questions in tests)
 5. Live coding contests
 6. AI hints, question generation and feedback
 7. Teacher analytics and a load test
