@@ -1,0 +1,137 @@
+{
+  "environment": {
+    "date": "2026-10-11T17:36:43.664Z",
+    "cpu": "AMD Ryzen 7 5800HS with Radeon Graphics (16 logical cores)",
+    "memoryGb": 17,
+    "os": "Windows_NT 10.0.26200",
+    "node": "v22.23.3",
+    "api": "local, same machine as the load generator",
+    "database": "MongoDB Atlas (remote)",
+    "redis": "Upstash Redis (remote, TLS)"
+  },
+  "results": [
+    {
+      "scenario": "live-quiz",
+      "players": 50,
+      "connected": 50,
+      "questions": 5,
+      "joinAllMs": 1099,
+      "questionFanoutMs": {
+        "count": 250,
+        "min": 144,
+        "p50": 150,
+        "p90": 153,
+        "p95": 156,
+        "p99": 158,
+        "max": 158,
+        "mean": 150.1
+      },
+      "answerAckMs": {
+        "count": 250,
+        "min": 212,
+        "p50": 216,
+        "p90": 221,
+        "p95": 234,
+        "p99": 662,
+        "max": 669,
+        "mean": 226.1
+      },
+      "revealFanoutMs": {
+        "count": 250,
+        "min": 574,
+        "p50": 581,
+        "p90": 586,
+        "p95": 588,
+        "p99": 589,
+        "max": 589,
+        "mean": 581.3
+      },
+      "answersAccepted": 250,
+      "answersExpected": 250,
+      "errors": 0,
+      "errorSamples": []
+    },
+    {
+      "scenario": "live-quiz",
+      "players": 100,
+      "connected": 100,
+      "questions": 5,
+      "joinAllMs": 2093,
+      "questionFanoutMs": {
+        "count": 500,
+        "min": 143,
+        "p50": 149,
+        "p90": 153,
+        "p95": 154,
+        "p99": 157,
+        "max": 157,
+        "mean": 148.7
+      },
+      "answerAckMs": {
+        "count": 500,
+        "min": 212,
+        "p50": 215,
+        "p90": 220,
+        "p95": 226,
+        "p99": 247,
+        "max": 696,
+        "mean": 221.2
+      },
+      "revealFanoutMs": {
+        "count": 500,
+        "min": 576,
+        "p50": 586,
+        "p90": 595,
+        "p95": 596,
+        "p99": 598,
+        "max": 598,
+        "mean": 586.1
+      },
+      "answersAccepted": 500,
+      "answersExpected": 500,
+      "errors": 0,
+      "errorSamples": []
+    },
+    {
+      "scenario": "live-quiz",
+      "players": 200,
+      "connected": 200,
+      "questions": 5,
+      "joinAllMs": 3944,
+      "questionFanoutMs": {
+        "count": 1000,
+        "min": 143,
+        "p50": 156,
+        "p90": 166,
+        "p95": 170,
+        "p99": 172,
+        "max": 173,
+        "mean": 156.6
+      },
+      "answerAckMs": {
+        "count": 1000,
+        "min": 211,
+        "p50": 214,
+        "p90": 220,
+        "p95": 227,
+        "p99": 245,
+        "max": 735,
+        "mean": 218.3
+      },
+      "revealFanoutMs": {
+        "count": 1000,
+        "min": 582,
+        "p50": 605,
+        "p90": 624,
+        "p95": 627,
+        "p99": 630,
+        "max": 630,
+        "mean": 605.9
+      },
+      "answersAccepted": 1000,
+      "answersExpected": 1000,
+      "errors": 0,
+      "errorSamples": []
+    }
+  ]
+}

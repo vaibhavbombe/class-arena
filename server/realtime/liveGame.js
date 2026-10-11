@@ -92,7 +92,7 @@ async function openNextQuestion(game) {
   if (!moved) return { error: 'The game moved on already' }
 
   io.to(room(game.id)).emit('game:question', rules.questionForPlayers(game.items[nextIndex], nextIndex, game.items.length, endsAt, now))
-  io.to(hostRoom(game.id)).emit('game:progress', { index: nextIndex, answeredCount: 0, playerCount: Object.keys(await store.players(game.id)).length })
+  io.to(hostRoom(game.id)).emit('game:progress', { index: nextIndex, answeredCount: 0, playerCount: await store.playerCount(game.id) })
 
   // Close the question once its time (plus the network grace) is up.
   clearTimer(game.id)
@@ -213,6 +213,42 @@ function handler(fn) {
   }
 }
 
+// The teacher's live answer chart. Rebuilding it needs every answer so far, so doing that on
+// each answer costs O(players) per answer and O(players^2) per question (the load test showed
+// it). Instead: send it right away for the first answer, then at most every PROGRESS_MS, with
+// one trailing update for answers that arrived in between.
+const PROGRESS_MS = 250
+const progressBatches = new Map()
+
+async function sendProgress(game, index) {
+  try {
+    const [answerMap, playerCount] = await Promise.all([store.answers(game.id, index), store.playerCount(game.id)])
+    const answerList = Object.values(answerMap)
+    io.to(hostRoom(game.id)).emit('game:progress', { index, answeredCount: answerList.length, playerCount, distribution: rules.distribution(game.items[index], answerList) })
+  } catch (err) {
+    console.error('Live progress failed:', err)
+  }
+}
+
+function queueProgress(game, index) {
+  const key = `${game.id}:${index}`
+  const batch = progressBatches.get(key)
+  if (batch) {
+    batch.pending = true
+    return
+  }
+  const entry = { pending: false }
+  progressBatches.set(key, entry)
+  sendProgress(game, index)
+  const flush = () => {
+    if (!entry.pending) return progressBatches.delete(key)
+    entry.pending = false
+    sendProgress(game, index)
+    setTimeout(flush, PROGRESS_MS)
+  }
+  setTimeout(flush, PROGRESS_MS)
+}
+
 function registerLiveGame(socket) {
   const identity = socket.data.user
   const hosting = new Set()
@@ -279,10 +315,9 @@ function registerLiveGame(socket) {
     if (result.error === 'closed') return { error: 'Time is up for this question' }
     if (result.error) return { error: 'Join the game first' }
 
-    // Live progress for the teacher's chart, then close early once everyone has answered.
-    const answerMap = await store.answers(id, index)
-    const playerCount = Object.keys(await store.players(id)).length
-    io.to(hostRoom(id)).emit('game:progress', { index, answeredCount: result.count, playerCount, distribution: rules.distribution(item, Object.values(answerMap)) })
+    // Close early once everyone has answered; the teacher's live chart is updated in batches.
+    const playerCount = await store.playerCount(id)
+    queueProgress(game, index)
     if (result.count >= playerCount) await closeQuestion(game, index)
     // Correctness and points stay hidden until the reveal.
     return { ok: true }

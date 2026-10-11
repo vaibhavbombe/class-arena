@@ -221,7 +221,7 @@ Vercel (client), Render (server)
   free instance; a dedicated judge host with a kernel sandbox would be the next step for untrusted
   traffic at scale. Jobs are judged one at a time by a single worker.
 - Live games run on a single server instance (timers are in-process; Render's free tier runs one). Scaling
-  out would need the Socket.io Redis adapter and a shared timer. The game hasn't been load-tested yet. See **Testing** below
+  out would need the Socket.io Redis adapter and a shared timer. See **Performance** below for measured numbers and **Testing**
   for what is covered.
 - Contests: the board is recomputed from all submissions on each request (fine for a class, but a
   large contest would need a cached or incremental board); a contest can't be paused, extended or
@@ -286,7 +286,59 @@ Server environment variables:
   limits) and submission feedback (one review per submission even on a double click, no code, fallback,
   only the submitting student, limits). The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
-- Not covered: the React UI, load/performance, and email delivery itself.
+- **Load test** (`npm run loadtest`): simulated students in live quizzes and a contest; see **Performance** below.
+  It measures, it doesn't pass or fail, and it isn't run automatically.
+- Not covered: the React UI (checked by hand and with screenshots), performance of the hosted deployment, and email
+  delivery itself.
+
+## Performance (measured)
+
+`npm run loadtest` (in `server/`) starts its own API (email and AI off) and simulates students. Numbers below are
+from **one run of each scenario on a laptop** (AMD Ryzen 7 5800HS, 16 threads, Windows 11, Node 22) with the API and the
+load generator on the same machine, MongoDB Atlas and Upstash Redis (TLS) as remote services. They describe this setup,
+**not the hosted Render free tier**, which hasn't been load-tested. Raw results: `server/loadtest/results/`.
+
+**Live quiz** (5 multiple-choice questions; every student connects, joins with the PIN and answers each question after
+a random 0.3–2.5 s; times on the load generator's clock). All runs: every student connected, every answer accepted, 0 errors.
+
+| Players | Question reaches player p50 / p95 | Answer acknowledged p50 / p95 / p99 | Reveal after last answer p50 / p95 |
+|---|---|---|---|
+| 50 | 150 / 156 ms | 216 / 234 / 662 ms | 581 / 588 ms |
+| 100 | 149 / 154 ms | 215 / 226 / 247 ms | 586 / 596 ms |
+| 200 | 156 / 170 ms | 214 / 227 / 245 ms | 605 / 627 ms |
+
+- **A bottleneck the load test found, and the fix.** The first run at 200 players had an answer p99 of **1,936 ms** and
+  reveal p50 of 961 ms. Each answer rebuilt the teacher's live chart by reading *every* answer and *every* player from
+  Redis, which is O(players) work per answer and O(players²) per question. Now the player count is one `HLEN` and the
+  chart is sent at most every 250 ms (first answer immediately, plus one trailing update). The same 200-player test gave
+  p99 **245 ms**, and latency no longer grows from 50 to 200 players.
+- **Where the remaining time goes.** A Redis round trip from this machine to Upstash measured **~69 ms** (MongoDB Atlas:
+  ~7 ms). Handling an answer makes 3 sequential Redis calls (state, the atomic answer script, player count), about
+  207 ms, which matches the ~215 ms p50. Redis in the same region as the API, or folding the count into the Lua script,
+  would cut most of it; neither has been done or measured.
+
+**Contest judge** (50 students submit at the same moment: 60% correct, 20% wrong answer, 20% infinite loops; 6 tests
+each with a 300 ms limit; times from the server's own `createdAt`/`judgedAt`). All 50 judged with the expected
+verdict, 0 errors.
+
+| Submit acknowledged (202) p50 / p95 | Queued → verdict saved p50 / p95 / max | All 50 judged in | Throughput |
+|---|---|---|---|
+| 1,814 / 1,848 ms | 13.1 / 29.7 / 30.6 s | 31.8 s | 1.57 submissions/s |
+
+- The judge is one worker process judging one submission at a time, and infinite loops dominate: each one runs until
+  its time limit. More workers would raise throughput roughly linearly on a machine with spare cores; that hasn't
+  been built.
+- Why the submit acknowledgement takes ~1.8 s when 50 requests arrive together hasn't been investigated yet.
+
+## Demo data
+
+`node scripts/seed-demo.js --api=http://localhost:5002 --password=<password>` (in `server/`, with the API running)
+creates a demo institute through the public API, so everything passes the normal validation: a teacher, 8 students,
+a question bank (whose coding questions are checked in the judge first), two tests taken by every student (so the
+analytics have data), coding practice with submissions and a running contest. It refuses non-local APIs unless
+`--production` is passed; `--tag=x` makes the emails unique so it can run again. The demo admin can send invite
+emails, so only the teacher and student logins should be shared. Contest solves all land in the first minute,
+because the API (correctly) doesn't allow backdating submissions.
 
 ## API
 | Method | Path | Who |
