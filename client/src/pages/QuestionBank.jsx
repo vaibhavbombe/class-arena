@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
 import QuestionEditor, { TYPE_LABELS } from '../components/QuestionEditor.jsx'
+import AiGenerator from '../components/AiGenerator.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
 import { buttonStyle, colors, ghostButtonStyle, inputStyle, messageStyle, sectionTitleStyle, widePageStyle } from '../styles.js'
@@ -24,8 +25,8 @@ function AnswerSummary({ question }) {
   }
   return (
     <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', fontSize: '0.8rem' }}>
-      {question.options.map((option) => (
-        <li key={option.id} style={{ color: option.correct ? colors.success : colors.muted }}>{option.correct ? '✓ ' : ''}{option.text}</li>
+      {question.options.map((option, i) => (
+        <li key={option.id || i} style={{ color: option.correct ? colors.success : colors.muted }}>{option.correct ? '✓ ' : ''}{option.text}</li>
       ))}
     </ul>
   )
@@ -36,7 +37,9 @@ export default function QuestionBank() {
   const [questions, setQuestions] = useState([])
   const [tags, setTags] = useState([])
   const [filters, setFilters] = useState({ type: '', tag: '', q: '' })
-  const [editing, setEditing] = useState(null) // null = closed, 'new', or a question
+  const [editing, setEditing] = useState(null) // null = closed, 'new', a question, or { draft }
+  const [generating, setGenerating] = useState(false)
+  const [drafts, setDrafts] = useState([])
   const [message, setMessage] = useState(null)
 
   function load() {
@@ -56,7 +59,8 @@ export default function QuestionBank() {
   }
 
   function handleSaved() {
-    setMessage({ ok: true, text: editing === 'new' ? 'Question added.' : 'Question updated.' })
+    if (editing?.draft) setDrafts((list) => list.filter((d) => d.key !== editing.draft.key))
+    setMessage({ ok: true, text: editing === 'new' || editing?.draft ? 'Question added.' : 'Question updated.' })
     setEditing(null)
     load()
   }
@@ -87,18 +91,27 @@ export default function QuestionBank() {
       <AppHeader me={me} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
         <h2 style={sectionTitleStyle}>Question bank {me.user.role === 'admin' ? '(whole institute)' : ''}</h2>
-        {editing === null && <button onClick={() => { setMessage(null); setEditing('new') }} style={buttonStyle}>+ New question</button>}
+        {editing === null && (
+          <span style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button onClick={() => setGenerating((open) => !open)} style={ghostButtonStyle}>{generating ? 'Close AI generator' : '✨ Generate with AI'}</button>
+            <button onClick={() => { setMessage(null); setEditing('new') }} style={buttonStyle}>+ New question</button>
+          </span>
+        )}
       </div>
 
       {editing !== null && (
         <QuestionEditor
-          key={editing === 'new' ? 'new' : editing._id}
-          question={editing === 'new' ? null : editing}
+          key={editing === 'new' ? 'new' : editing.draft ? editing.draft.key : editing._id}
+          question={editing === 'new' || editing.draft ? null : editing}
+          draft={editing.draft}
           onSaved={handleSaved}
           onCancel={() => setEditing(null)}
         />
       )}
       {message && <p role="status" style={messageStyle(message.ok)}>{message.text}</p>}
+      {generating && editing === null && (
+        <AiGenerator drafts={drafts} setDrafts={setDrafts} preview={(draft) => <AnswerSummary question={draft} />} onReview={(draft) => { setMessage(null); setEditing({ draft }); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+      )}
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
         <input type="search" value={filters.q} onChange={(event) => setFilter('q', event.target.value)} placeholder="Search questions" aria-label="Search questions" style={{ ...inputStyle, flex: '1 1 200px' }} />

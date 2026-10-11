@@ -29,9 +29,10 @@ function toForm(question) {
 const labelStyle = { display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.85rem', color: colors.muted }
 const smallButton = { ...ghostButtonStyle, padding: '0.3rem 0.6rem' }
 
-// Create (question = null) or edit an existing question.
-export default function QuestionEditor({ question, onSaved, onCancel }) {
-  const [form, setForm] = useState(() => toForm(question))
+// Create (question = null) or edit an existing question. A draft (e.g. from the AI generator)
+// pre-fills the form for a new question; it is only saved when the teacher presses Save.
+export default function QuestionEditor({ question, draft, onSaved, onCancel }) {
+  const [form, setForm] = useState(() => toForm(question || draft))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -107,7 +108,8 @@ export default function QuestionEditor({ question, onSaved, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '8px', padding: '1rem', marginTop: '1rem' }}>
-      <h3 style={{ margin: 0, fontSize: '1rem' }}>{question ? 'Edit question' : 'New question'}</h3>
+      <h3 style={{ margin: 0, fontSize: '1rem' }}>{question ? 'Edit question' : draft ? '✨ Review AI draft' : 'New question'}</h3>
+      {draft && <p style={{ margin: 0, fontSize: '0.85rem', color: colors.muted }}>AI can be wrong. Check the question and the marked answer{draft.type === 'code' ? ', and use “Check with judge” after any change to the tests or solution' : ''} before saving.</p>}
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <label style={labelStyle}>

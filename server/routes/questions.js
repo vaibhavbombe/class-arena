@@ -5,6 +5,11 @@ const User = require('../models/User')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { parseQuestionInput, cleanCode } = require('../lib/questionInput')
 const { judgeCode } = require('../judge/queue')
+const generator = require('../lib/ai/generator')
+const { aiConfig, chatJSON } = require('../lib/ai/client')
+const { spendBudget, claimCooldown } = require('../lib/ai/budget')
+
+const GENERATE = { perTeacherPerDay: 20, cooldownMs: 15000 }
 
 // The question bank holds correct answers, so the whole router is staff-only.
 // Students only ever see questions through test views that strip the answers.
@@ -61,6 +66,41 @@ router.post('/check-code', async (req, res) => {
   const result = await judgeCode({ code: solution, functionName: code.functionName, tests, timeLimitMs: code.timeLimitMs, memoryMb: code.memoryMb, revealAll: true })
   result.tests = result.tests.map((test) => ({ ...test, kind: test.index < code.sampleTests.length ? 'sample' : 'hidden' }))
   res.json(result)
+})
+
+// AI drafts for the teacher to review. Nothing is saved here: the teacher edits a draft and
+// saves it through POST / like any other question. Coding drafts are checked by running the
+// AI's own reference solution against its tests in the judge.
+router.post('/generate', async (req, res) => {
+  const { request, error } = generator.parseRequest(req.body)
+  if (error) return res.status(400).json({ error })
+  if (!aiConfig().enabled) return res.status(503).json({ error: 'AI question generation is not set up on this server yet. You can still write questions by hand.' })
+  if (!(await claimCooldown('generate', req.userId, GENERATE.cooldownMs))) return res.status(429).json({ error: 'Please wait a few seconds before generating again' })
+  const over = await spendBudget({ feature: 'generate', userId: req.userId, institutionId: req.institutionId, userLimit: GENERATE.perTeacherPerDay })
+  if (over) return res.status(429).json({ error: over === 'user' ? `You've reached today's limit of ${GENERATE.perTeacherPerDay} AI generations.` : "Your institute has reached today's AI limit." })
+
+  const result = await chatJSON({
+    messages: generator.buildGeneratorMessages(request),
+    validate: (data) => generator.validateGenerated(data, request),
+    maxTokens: request.type === 'code' ? 4000 : 2500,
+    temperature: 0.7,
+    timeoutMs: 60000,
+  })
+  if (!result.ok) return res.status(502).json({ error: 'The AI could not write valid questions this time. Try again, reword the topic, or write the question by hand.' })
+
+  const drafts = result.data.questions.map((item) => generator.toQuestionBody(item, request))
+  if (request.type === 'code') {
+    for (const draft of drafts) {
+      const { code } = parseQuestionInput(draft).question
+      try {
+        const checked = await judgeCode({ code: code.referenceSolution, functionName: code.functionName, tests: [...code.sampleTests, ...code.hiddenTests], timeLimitMs: code.timeLimitMs, memoryMb: code.memoryMb })
+        draft.check = { verdict: checked.verdict, passed: checked.passed, total: checked.total }
+      } catch {
+        draft.check = { verdict: 'Not checked', passed: 0, total: 0 }
+      }
+    }
+  }
+  res.json({ drafts, model: result.model })
 })
 
 router.get('/:id', async (req, res) => {

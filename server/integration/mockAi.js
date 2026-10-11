@@ -1,10 +1,31 @@
 // A fake OpenRouter (OpenAI-compatible) server for the integration tests, so AI features are
 // tested end to end without a real key or any cost. What it answers depends on a marker in the
-// request: MOCK_FLAKY (garbage once, then a good hint), MOCK_CODE (always code), MOCK_DOWN (500).
+// request: MOCK_FLAKY (garbage once, then a good answer), MOCK_CODE (hint with code), MOCK_DOWN (500),
+// MOCK_BAD (generated MCQs with two right answers), MOCK_WRONGREF (code whose solution fails a test).
 // GET /requests lists what the API sent, so tests can check nothing secret reaches the AI.
 const http = require('http')
 
 const KEY = 'test-key'
+
+function generated(count, type, marker) {
+  return Array.from({ length: count }, (_, i) => {
+    const base = { explanation: 'Because it is.', tags: ['Mock', 'generated'] }
+    if (type === 'short') return { ...base, prompt: `Mock short question ${i + 1}: what is 2 + 2?`, acceptedAnswers: ['4', 'four'] }
+    if (type === 'code') {
+      return {
+        ...base,
+        prompt: `Mock double ${i + 1}\nReturn n times two.`,
+        functionName: 'double',
+        starterCode: 'function double(n) {\n}\n',
+        referenceSolution: marker === 'MOCK_WRONGREF' ? 'function double(n) { return n < 0 ? 0 : n * 2 }' : 'function double(n) { return n * 2 }',
+        sampleTests: [{ input: [2], expected: 4 }],
+        hiddenTests: [{ input: [0], expected: 0 }, { input: [-3], expected: -6 }, { input: [10], expected: 20 }],
+      }
+    }
+    const options = [{ text: 'Right answer', correct: true }, { text: 'Wrong answer', correct: marker === 'MOCK_BAD' || type === 'multi' }, { text: 'Another wrong answer', correct: false }]
+    return { ...base, prompt: `Mock ${type} question ${i + 1}: pick the right answer.`, options }
+  })
+}
 
 function startMockAi(port) {
   const requests = []
@@ -30,8 +51,10 @@ function startMockAi(port) {
       seen.set(marker, count)
 
       if (marker === 'MOCK_DOWN') return send(500, { error: 'upstream down' })
-      if (marker === 'MOCK_CODE') return reply(JSON.stringify({ hint: 'Here you go: function solve(nums) { return nums.length }', focus: 'approach' }))
       if (marker === 'MOCK_FLAKY' && count % 2 === 1) return reply('Sorry, I cannot produce JSON today.')
+      const generate = /exactly (\d+) \w+ question\(s\) of type "(\w+)"/.exec(text)
+      if (generate) return reply(JSON.stringify({ questions: generated(Number(generate[1]), generate[2], marker) }))
+      if (marker === 'MOCK_CODE') return reply(JSON.stringify({ hint: 'Here you go: function solve(nums) { return nums.length }', focus: 'approach' }))
       return reply('```json\n' + JSON.stringify({ hint: `Mock hint at level ${level}: think about what happens with an empty list.`, focus: 'edge-cases' }) + '\n```')
     })
   })

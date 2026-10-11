@@ -5,6 +5,7 @@
 //   { type: 'string', min, max }            { type: 'number', min, max, integer }
 //   { type: 'enum', values: [...] }         { type: 'array', items, min, max }
 //   { type: 'object', fields: { name: schema }, optional: ['name'] }
+//   { type: 'any' }  any JSON value (checked further by the caller)
 
 function check(schema, value, path = 'value') {
   switch (schema.type) {
@@ -47,6 +48,8 @@ function check(schema, value, path = 'value') {
       }
       return null
     }
+    case 'any':
+      return value === undefined ? `${path} is missing` : null
     default:
       throw new Error(`Unknown schema type ${schema.type}`)
   }
