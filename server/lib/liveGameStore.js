@@ -120,6 +120,11 @@ async function players(gameId) {
   return redis().hgetall(keys.players(gameId)) // { studentId: name }
 }
 
+// Just the number of players (one HLEN instead of fetching every name).
+async function playerCount(gameId) {
+  return redis().hlen(keys.players(gameId))
+}
+
 // Returns { count } or { error: 'closed' | 'already' | 'not_player' }.
 async function recordAnswer(gameId, index, studentId, now, graceMs, answer) {
   const result = await redis().gameAnswer(
@@ -154,5 +159,5 @@ async function cleanUp(gameId, pin, questionCount) {
 
 module.exports = {
   keys, reservePin, createState, getState, gameIdForPin, transition, end,
-  addPlayer, players, recordAnswer, answers, ranking, cleanUp,
+  addPlayer, players, playerCount, recordAnswer, answers, ranking, cleanUp,
 }
