@@ -202,13 +202,23 @@ Vercel (client), Render (server)
   Login doesn't apply them, so older accounts still work. The 72 cap is because bcrypt ignores
   anything past 72 bytes. (NIST SP 800-63B prefers length plus breached-password checks over
   composition rules; a breached-password check is not implemented.)
+- **Rate limits count failures, not people.** A whole school can share one public IP, so per-IP limits are
+  generous (e.g. 200 logins per 15 minutes) and only stop floods. Guessing is stopped by counting *failures*
+  per target in Redis (`lib/limits.js` lists every limit): 10 wrong passwords per account per IP in 15
+  minutes (cleared by a successful login) plus 50 per account from anywhere per hour, 10 wrong class codes
+  per student, 20 wrong codes per IP at signup, and 20 wrong game PINs per student. The check runs before
+  bcrypt, treats unknown emails exactly like real ones, and answers 429 with `Retry-After`. Behind Render's
+  proxy the client IP comes from `X-Forwarded-For` with Express's `trust proxy` set to the exact number of
+  proxy hops, so a client can't pick its own IP by sending that header.
 - **Password reset doesn't reveal who has an account.** "Forgot password" gives the same answer for
   any email and sends the email in the background, so response time doesn't leak it either. Only a
   SHA-256 hash of the reset token is stored; links are single-use, expire in 30 minutes, are limited
   to one per account per minute, and a successful reset signs out every existing session.
 
 ## Known limitations
-- No rate limiting yet, so login and join codes could be brute-forced.
+- Rate limits use fixed windows (a burst at a window edge can get up to twice the limit through), and if Redis
+  is down they allow everything rather than block logins. A determined attacker spreading guesses across many
+  IPs is slowed (50 failures per account per hour) but not stopped; there is no CAPTCHA or account lockout email.
 - One email address can belong to only one institute.
 - Students can't leave a class themselves, and classes can't be renamed yet.
 - Removing a member or deleting a class runs several deletes without a transaction; they're ordered
@@ -271,7 +281,7 @@ Server environment variables:
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, contest ranking (penalties, ties, first solves, the freeze), the AI client (schema checks, retry, timeouts, no retry on 401, the key never logged) and hint rules (code detection, prompt contents, fallbacks), the question generator's validation, feedback rules, and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 22 suites, 324 checks; add suite names to run only those): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 23 suites, 335 checks; add suite names to run only those): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -284,7 +294,9 @@ Server environment variables:
   down, daily and per-click limits, and that the AI never receives hidden tests or the reference solution) and the question generator
   (drafts not saved, retry, rule-breaking output never returned, coding drafts checked in the judge,
   limits) and submission feedback (one review per submission even on a double click, no code, fallback,
-  only the submitting student, limits). The runner refuses databases whose names don't end in `-dev`
+  only the submitting student, limits), and rate limits (run against a second API with limits on and fresh
+  counters: failed logins, unknown emails treated the same, reset on success, spoofed X-Forwarded-For ignored,
+  wrong class codes and game PINs, signups per IP). The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
 - **Load test** (`npm run loadtest`): simulated students in live quizzes and a contest; see **Performance** below.
   It measures, it doesn't pass or fail, and it isn't run automatically.

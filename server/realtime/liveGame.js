@@ -4,6 +4,8 @@ const Class = require('../models/Class')
 const Enrollment = require('../models/Enrollment')
 const store = require('../lib/liveGameStore')
 const rules = require('../lib/liveGameRules')
+const { blockedBy, recordFailure } = require('../lib/rateLimit')
+const LIMITS = require('../lib/limits')
 
 // The live game engine. The server decides everything: when a question opens and closes,
 // whether an answer counts, and how many points it earns. Clients only display.
@@ -279,11 +281,19 @@ function registerLiveGame(socket) {
   socket.on('player:join', handler(async ({ pin }) => {
     if (identity.role !== 'student') return { error: 'Only students can join as players' }
     if (typeof pin !== 'string' || !/^\d{6}$/.test(pin)) return { error: 'Enter the 6-digit game PIN' }
+    // Wrong PINs are limited per student, so nobody can try PINs until one works.
+    const wrongPins = [{ ...LIMITS.gamePin.wrongPinsPerUser, id: identity.userId }]
+    const wait = await blockedBy(wrongPins)
+    if (wait) return { error: `Too many wrong PINs. Try again in ${Math.ceil(wait / 60)} minute${wait > 60 ? 's' : ''}.` }
     const gameId = await store.gameIdForPin(pin)
     const game = gameId && await loadGame(gameId)
     // Same answer for "no such PIN" and "not your class", so PINs can't be probed across classes.
-    if (!game || game.status === 'ended' || game.institutionId.toString() !== identity.institutionId) return { error: 'No game found with that PIN' }
-    if (!(await Enrollment.exists({ classId: game.classId, studentId: identity.userId }))) return { error: 'No game found with that PIN' }
+    const found = game && game.status !== 'ended' && game.institutionId.toString() === identity.institutionId
+      && await Enrollment.exists({ classId: game.classId, studentId: identity.userId })
+    if (!found) {
+      await recordFailure(wrongPins)
+      return { error: 'No game found with that PIN' }
+    }
 
     await store.addPlayer(game.id, identity.userId, identity.name)
     socket.data.playing = game.id
