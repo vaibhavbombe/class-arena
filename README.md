@@ -3,8 +3,9 @@
 A multi-tenant classroom and competition platform for institutes. **Work in progress:** built so far
 are accounts and classes (Phase 1), a question bank with timed, auto-graded tests (Phase 2),
 Kahoot-style live quiz battles (Phase 3), JavaScript coding questions judged in a sandbox, for practice
-and inside tests (Phase 4), live ICPC-style coding contests (Phase 5), and a class analytics dashboard.
-AI features are planned and do not exist yet.
+and inside tests (Phase 4), live ICPC-style coding contests (Phase 5), a class analytics dashboard, and the first AI feature
+(Phase 6): hints on coding practice. The AI question generator and post-submission feedback are
+planned and do not exist yet.
 
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
 first request after it has been idle can take ~50 seconds)
@@ -55,6 +56,11 @@ first request after it has been idle can take ~50 seconds)
   a **live leaderboard** ranks by problems solved, then penalty time, marks the first solver of each
   problem with a star and updates over Socket.io as results come in. During the freeze students see the
   board as it was (newer tries show as “?”) while the teacher sees it live; it unfreezes at the end.
+- **AI hints on coding practice:** up to 3 hints per problem, in order: a nudge, then the approach,
+  then a step-by-step plan in plain words. Hints use the problem, the samples, the student's current code
+  and their latest verdict, and never contain code. If the AI is off or fails, the student gets a fixed
+  standard hint instead. Teachers see how many hints each student used. There are no hints in contests
+  or timed tests.
 - **Light and dark mode:** System (follows the device), Light or Dark, switchable from the header or the
   login pages and remembered per device.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
@@ -148,6 +154,18 @@ Vercel (client), Render (server)
   freeze a student and a teacher must see different boards, so building the board per viewer over HTTP
   keeps the freeze rule in one place instead of broadcasting data that a client could read early. Joining
   the room uses the same access check as the HTTP API.
+- **AI output is untrusted input.** All AI calls go through one server-side module (`lib/ai/client.js`;
+  the key never reaches the browser and only a fingerprint is logged). Every reply must be JSON that
+  passes a schema check (`lib/ai/schema.js`); hints are also rejected if they look like code. A bad
+  reply or a temporary error (timeout, 429, 5xx) is retried once, then the caller falls back to a fixed
+  hint, so the feature never breaks when the AI does. The model never gets hidden tests or the reference
+  solution, so it can't leak them, and the student's code is passed as delimited data with an instruction
+  to ignore instructions inside it (this reduces prompt injection; it can't rule it out).
+- **AI cost has three limits.** Each student gets 30 AI calls a day and each institute 500 (Redis
+  counters; past the institute limit students still get standard hints), with one hint per 10 seconds.
+  Each hint is saved once (a unique index on problem, student and level), so reloading or double-clicking
+  never pays twice. The hard cap is the credit limit set on the OpenRouter key itself. The default model
+  is `anthropic/claude-haiku-5.5`, chosen for price; `AI_MODEL` changes it.
 - **Student code never runs in the API process.** The API puts a job on a Redis queue; a separate judge
   worker process (restarted automatically, killed by a 30 s watchdog if a job hangs) runs it in a fresh
   V8 isolate via `isolated-vm`: no Node APIs (no require, files, network, process or timers), a memory
@@ -192,6 +210,8 @@ Vercel (client), Render (server)
 - Contests: the board is recomputed from all submissions on each request (fine for a class, but a
   large contest would need a cached or incremental board); a contest can't be paused, extended or
   ended early; there is no rejudge; and only JavaScript is supported.
+- AI hints: their quality hasn't been measured yet (no evaluation set or student feedback), the daily
+  limits are fixed in code, and hints are English only.
 - Multi-select has no partial credit, and short answers are exact matches after normalising (no
   fuzzy matching or manual regrading yet).
 - The Render free tier sleeps when idle, so the first request after a while can take ~50 seconds.
@@ -229,11 +249,11 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 95 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 105 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
-  students contains answers), results statistics, class analytics, contest ranking (penalties, ties, first solves, the freeze), and the code judge (every verdict,
+  students contains answers), results statistics, class analytics, contest ranking (penalties, ties, first solves, the freeze), the AI client (schema checks, retry, timeouts, no retry on 401, the key never logged) and hint rules (code detection, prompt contents, fallbacks), and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 19 suites, 281 checks; add suite names to run only those): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 20 suites, 298 checks; add suite names to run only those): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -241,7 +261,9 @@ Server environment variables:
   over Socket.io (joining rules, timing, scoring, simultaneous answers, rejoin after refresh), and the
   judge queue and worker (infinite loops, memory bombs, simultaneous submissions), and coding contests
   (problems hidden before the start, submissions refused outside the window, ICPC penalties, the freeze
-  for students vs. the live board for teachers, Socket.io update pings, other institutes locked out). The runner refuses databases whose names don't end in `-dev`
+  for students vs. the live board for teachers, Socket.io update pings, other institutes locked out), and AI hints against a local fake AI server, so no
+  real key or money is used (levels in order, retry of a bad reply, fallback when the AI returns code or is
+  down, daily and per-click limits, and that the AI never receives hidden tests or the reference solution). The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
 - Not covered: the React UI, load/performance, and email delivery itself.
 
@@ -272,6 +294,7 @@ Server environment variables:
 | GET / DELETE | `/api/problems/:id` | class members (students: no hidden tests) / class teacher, admin |
 | POST | `/api/problems/:id/submit` | student in the class (queued; 1 per 5 s) |
 | GET | `/api/problems/:id/submissions/:submissionId` | the student who submitted, class teacher, admin |
+| POST | `/api/problems/:id/hints` (`{ code? }`) | student in the class (next hint, levels 1–3; 1 per 10 s) |
 | GET / POST | `/api/contests` (`?classId=`) | class members (students: published only) / class teacher, admin |
 | GET / PUT / DELETE | `/api/contests/:id` | class members (students: no problems before the start, never hidden tests) / class teacher, admin (settings only before the start) |
 | POST | `/api/contests/:id/publish` (`{ published }`) · `/api/contests/:id/start` | class teacher, admin |
@@ -299,5 +322,5 @@ Server environment variables:
 | GET | `/api/tests/:id/results/:studentId` | class teacher, admin |
 
 ## Roadmap
-6. AI hints, question generation and feedback
+6. AI question generation (teacher reviews before publishing) and post-submission feedback
 7. Teacher analytics and a load test

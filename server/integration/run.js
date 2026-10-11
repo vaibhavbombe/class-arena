@@ -2,16 +2,18 @@
 // it in order, then stops it.   npm run test:integration
 // Needs MONGODB_URI in server/.env pointing at a database whose name ends in -dev or -test.
 const path = require('path')
+const { startMockAi, KEY } = require('./mockAi')
 const { spawn } = require('child_process')
 require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true })
 
 const SUITES = [
   'auth', 'classes', 'passwordReset', 'passwordRules', 'members',
-  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests', 'contests',
+  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests', 'contests', 'hints',
 ]
 // Optional: npm run test:integration -- contests judge  (runs only those suites)
 const ONLY = process.argv.slice(2)
 const PORT = process.env.INTEGRATION_PORT || '5099'
+const AI_PORT = process.env.INTEGRATION_AI_PORT || '5098'
 
 function databaseName(uri) {
   try {
@@ -35,8 +37,11 @@ async function main() {
     process.exit(1)
   }
 
-  // Email is switched off so the suites never send real messages.
-  const server = runNode('server.js', { PORT, EMAIL_DISABLED: 'true', REDIS_PREFIX: 'test' }, { onOutput: () => {} })
+  // Email is switched off so the suites never send real messages, and AI calls go to a local
+  // fake (integration/mockAi.js): a real OPENROUTER_API_KEY in .env is never used or charged.
+  const mockAi = await startMockAi(AI_PORT)
+  const aiEnv = { OPENROUTER_API_KEY: KEY, AI_MODEL: 'mock/model', AI_BASE_URL: `http://localhost:${AI_PORT}/v1`, AI_DISABLED: 'false' }
+  const server = runNode('server.js', { PORT, EMAIL_DISABLED: 'true', REDIS_PREFIX: 'test', ...aiEnv }, { onOutput: () => {} })
   const ready = new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Server did not start within 30s')), 30000)
     server.stdout.on('data', (chunk) => {
@@ -55,13 +60,14 @@ async function main() {
     for (const suite of SUITES.filter((name) => !ONLY.length || ONLY.includes(name))) {
       console.log(`=== ${suite}`)
       const code = await new Promise((resolve) => {
-        runNode(path.join('integration', `${suite}.js`), { API_URL: `http://localhost:${PORT}`, REDIS_PREFIX: 'test' }).on('exit', resolve)
+        runNode(path.join('integration', `${suite}.js`), { API_URL: `http://localhost:${PORT}`, REDIS_PREFIX: 'test', AI_MOCK_URL: `http://localhost:${AI_PORT}` }).on('exit', resolve)
       })
       results.push({ suite, ok: code === 0 })
       console.log()
     }
   } finally {
     server.kill()
+    mockAi.close()
   }
 
   console.log('Summary')

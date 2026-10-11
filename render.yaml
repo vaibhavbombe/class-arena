@@ -28,3 +28,8 @@ services:
       # The Vercel URL, no trailing slash. Used for CORS and invite links.
       - key: CLIENT_URL
         sync: false
+      # AI hints. Create the key in OpenRouter with a credit limit (the hard spending cap).
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: anthropic/claude-haiku-5.5
