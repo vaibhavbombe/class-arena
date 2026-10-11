@@ -7,6 +7,7 @@ const { getRedis, redisStatus } = require('./lib/redis')
 const { attachRealtime } = require('./realtime')
 const { startJudgeWorker } = require('./judge/supervisor')
 const { judgeStatus, startJudgeListener } = require('./judge/queue')
+const { aiConfig, describeConfig } = require('./lib/ai/client')
 
 const app = express()
 app.use(cors({ origin: process.env.CLIENT_URL }))
@@ -19,6 +20,7 @@ app.get('/api/health', async (req, res) => res.json({
   commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? 'local',
   redis: redisStatus(),
   judge: await judgeStatus(), // is a judge worker alive (heartbeat in Redis)?
+  ai: aiConfig().enabled ? 'on' : 'off', // hints fall back to fixed text when off
 }))
 
 app.use('/api/auth', require('./routes/auth'))
@@ -56,6 +58,7 @@ const PORT = process.env.PORT || 5002
 connectMongo()
   .then(() => {
     getRedis() // connects in the background; /api/health reports its status
+    console.log(describeConfig())
     startJudgeWorker() // separate process that runs student code (judge/worker.js)
     if (process.env.REDIS_URL) startJudgeListener().catch((err) => console.error('Judge listener failed to start:', err.message))
     httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`))

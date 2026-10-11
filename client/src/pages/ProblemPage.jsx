@@ -12,6 +12,55 @@ const CodeEditor = lazy(() => import('../code/CodeEditor.jsx'))
 const json = (value) => JSON.stringify(value)
 const draftKey = (id) => `classarena:draft:${id}`
 
+const FOCUS = { understanding: 'Understanding', approach: 'Approach', 'edge-cases': 'Edge cases', bug: 'Bug', syntax: 'Syntax', performance: 'Speed' }
+
+// Up to 3 hints, one level at a time. The server writes them (AI, or a fixed hint if the AI is
+// unavailable) and never includes code; the current editor code is sent as context.
+function HintsCard({ problemId, hints, code, onHint }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const next = hints.length + 1
+
+  async function ask() {
+    setBusy(true)
+    setError(null)
+    try {
+      const response = await api.post(`/api/problems/${problemId}/hints`, { code })
+      onHint(response.data)
+    } catch (requestError) {
+      setError(errorMessage(requestError, 'Could not get a hint.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <h3 style={sectionTitleStyle}>Hints</h3>
+      <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        {hints.map((hint) => (
+          <div key={hint.level} style={{ borderLeft: `4px solid ${colors.primary}`, paddingLeft: '0.75rem' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: colors.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Hint {hint.level}{hint.focus ? ` · ${FOCUS[hint.focus] || hint.focus}` : ''}{hint.source === 'fallback' ? ' · standard hint' : ''}
+            </div>
+            <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.92rem', marginTop: '0.15rem' }}>{hint.text}</div>
+          </div>
+        ))}
+        {next <= 3 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button onClick={ask} disabled={busy} style={ghostButtonStyle}>{busy ? 'Thinking…' : `💡 Get hint ${next} of 3`}</button>
+            <span style={{ fontSize: '0.78rem', color: colors.muted }}>{next === 1 ? 'A nudge first, then the approach, then a plan. Never code.' : next === 2 ? 'Next: the approach in words.' : 'Last: a step-by-step plan.'}</span>
+          </div>
+        ) : (
+          <span style={{ fontSize: '0.8rem', color: colors.muted }}>You've used all 3 hints for this problem.</span>
+        )}
+        {error && <p role="alert" style={{ ...messageStyle(false), margin: 0 }}>{error}</p>}
+        <span style={{ fontSize: '0.72rem', color: colors.muted }}>AI hints can be wrong. Your teacher can see how many hints you used.</span>
+      </div>
+    </>
+  )
+}
+
 function readDraft(id) {
   try { return localStorage.getItem(draftKey(id)) } catch { return null }
 }
@@ -135,6 +184,7 @@ export default function ProblemPage() {
               {problem.functionName}({test.input.map(json).join(', ')}) → {json(test.expected)}
             </div>
           ))}
+          {!isStaff && <HintsCard problemId={id} hints={problem.hints || []} code={code} onHint={(hint) => setProblem((current) => ({ ...current, hints: [...(current.hints || []), hint] }))} />}
           {isStaff && (
             <>
               <h3 style={sectionTitleStyle}>Hidden tests (staff only)</h3>
@@ -192,17 +242,18 @@ export default function ProblemPage() {
           ) : (
             <div style={tableWrapStyle}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead><tr><th style={cellStyle}>Student</th><th style={cellStyle}>Status</th><th style={cellStyle}>Best</th><th style={cellStyle}>Attempts</th><th style={cellStyle}>Last</th><th style={cellStyle}><span style={{ position: 'absolute', left: '-9999px' }}>Code</span></th></tr></thead>
+                <thead><tr><th style={cellStyle}>Student</th><th style={cellStyle}>Status</th><th style={cellStyle}>Best</th><th style={cellStyle}>Attempts</th><th style={cellStyle}>Hints</th><th style={cellStyle}>Last</th><th style={cellStyle}><span style={{ position: 'absolute', left: '-9999px' }}>Code</span></th></tr></thead>
                 <tbody>
                   {problem.students.map((row) => (
                     <tr key={row.studentId}>
                       <td style={{ ...cellStyle, fontWeight: 700 }}>{row.name}</td>
-                      <td style={{ ...cellStyle, fontWeight: 700, color: row.solved ? colors.success : colors.muted }}>{row.solved ? '✓ Solved' : 'Trying'}</td>
+                      <td style={{ ...cellStyle, fontWeight: 700, color: row.solved ? colors.success : colors.muted }}>{row.solved ? '✓ Solved' : row.attempts ? 'Trying' : 'Not submitted'}</td>
                       <td style={cellStyle}>{row.best ? `${row.best.passed}/${row.best.total}` : '—'}</td>
                       <td style={cellStyle}>{row.attempts}</td>
-                      <td style={{ ...cellStyle, color: colors.muted }}>{new Date(row.lastAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                      <td style={cellStyle}>{row.hintsUsed ? `${row.hintsUsed}/3` : '—'}</td>
+                      <td style={{ ...cellStyle, color: colors.muted }}>{row.lastAt ? new Date(row.lastAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
                       <td style={{ ...cellStyle, textAlign: 'right' }}>
-                        <button onClick={async () => { const r = await api.get(`/api/problems/${id}/submissions/${row.latestSubmissionId}`).catch(() => null); if (r) { setCode(r.data.code); setSubmitResult(r.data); window.scrollTo({ top: 0, behavior: 'smooth' }) } }} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>View latest code</button>
+                        {row.latestSubmissionId && <button onClick={async () => { const r = await api.get(`/api/problems/${id}/submissions/${row.latestSubmissionId}`).catch(() => null); if (r) { setCode(r.data.code); setSubmitResult(r.data); window.scrollTo({ top: 0, behavior: 'smooth' }) } }} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>View latest code</button>}
                       </td>
                     </tr>
                   ))}

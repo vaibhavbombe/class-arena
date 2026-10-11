@@ -4,6 +4,7 @@ const Problem = require('../models/Problem')
 const CodeSubmission = require('../models/CodeSubmission')
 const Question = require('../models/Question')
 const User = require('../models/User')
+const Hint = require('../models/Hint')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { findVisibleClass } = require('../lib/classAccess')
 const { getRedis } = require('../lib/redis')
@@ -11,6 +12,7 @@ const views = require('../lib/problemViews')
 const { finalizeSubmission, settleSubmission } = require('../lib/submissions')
 const { enqueue, onJudgeResult } = require('../judge/queue')
 const { LIMITS } = require('../judge/runner')
+const hintService = require('../lib/ai/hintService')
 
 // Coding practice: teachers assign coding questions to a class; students run samples in
 // their browser and submit to the server judge. Submissions are queued, not awaited.
@@ -91,12 +93,15 @@ router.get('/:id', async (req, res) => {
 
   if (!isStaff(req)) {
     const mine = await CodeSubmission.find({ problemId: problem._id, studentId: req.userId }).sort({ createdAt: -1 }).limit(20)
-    return res.json({ ...views.studentProblemView(problem), status: views.problemStatus(mine), submissions: mine.map(submissionSummary), lastCode: mine[0]?.code ?? null })
+    const hints = await hintService.hintsFor(problem._id, req.userId)
+    return res.json({ ...views.studentProblemView(problem), status: views.problemStatus(mine), submissions: mine.map(submissionSummary), lastCode: mine[0]?.code ?? null, hints: hints.map(hintService.hintView) })
   }
 
   // Staff: each student's best verdict, attempts and latest submission.
   const subs = await CodeSubmission.find({ problemId: problem._id }).sort({ createdAt: -1 }).select('studentId verdict passed total createdAt status')
-  const students = await User.find({ _id: { $in: [...new Set(subs.map((s) => s.studentId.toString()))] }, institutionId: req.institutionId }).select('name')
+  const hintCounts = await Hint.aggregate([{ $match: { problemId: problem._id } }, { $group: { _id: '$studentId', count: { $sum: 1 } } }])
+  const studentIds = new Set([...subs.map((s) => s.studentId.toString()), ...hintCounts.map((h) => h._id.toString())])
+  const students = await User.find({ _id: { $in: [...studentIds] }, institutionId: req.institutionId }).select('name')
   const nameById = new Map(students.map((s) => [s.id, s.name]))
   const byStudent = new Map()
   for (const s of subs) {
@@ -107,6 +112,12 @@ router.get('/:id', async (req, res) => {
     if (s.passed !== null && (!row.best || s.passed > row.best.passed)) row.best = { passed: s.passed, total: s.total, verdict: s.verdict }
     byStudent.set(key, row)
   }
+  for (const { _id, count } of hintCounts) {
+    const key = _id.toString()
+    const row = byStudent.get(key) || { studentId: key, name: nameById.get(key) || 'Former student', attempts: 0, solved: false, best: null, latestSubmissionId: null, lastAt: null }
+    row.hintsUsed = count
+    byStudent.set(key, row)
+  }
   res.json({ ...views.staffProblemView(problem), students: [...byStudent.values()].sort((a, b) => Number(b.solved) - Number(a.solved) || a.name.localeCompare(b.name)) })
 })
 
@@ -114,6 +125,7 @@ router.delete('/:id', requireRole('teacher', 'admin'), async (req, res) => {
   const problem = await findVisibleProblem(req, req.params.id)
   if (!problem) return res.status(404).json({ error: 'Problem not found' })
   await CodeSubmission.deleteMany({ problemId: problem._id })
+  await Hint.deleteMany({ problemId: problem._id })
   await Problem.deleteOne({ _id: problem._id })
   res.json({ message: `"${problem.title}" was removed` })
 })
@@ -148,6 +160,18 @@ router.post('/:id/submit', requireRole('student'), async (req, res) => {
     revealAll: true,
   }, submission.id)
   res.status(202).json(submissionSummary(submission))
+})
+
+// The student's next hint (levels 1-3 in order). Practice problems only: contests and timed
+// tests have no hints. The current editor code is optional and only used as context.
+router.post('/:id/hints', requireRole('student'), async (req, res) => {
+  const problem = await findVisibleProblem(req, req.params.id)
+  if (!problem) return res.status(404).json({ error: 'Problem not found' })
+  const code = req.body?.code
+  if (code !== undefined && (typeof code !== 'string' || code.length > LIMITS.maxCodeLength)) return res.status(400).json({ error: 'code must be text' })
+  const result = await hintService.nextHint({ problem, student: req, code })
+  if (result.error) return res.status(result.status).json({ error: result.error })
+  res.status(201).json(result.hint)
 })
 
 // One submission: the student who made it, or staff of the class.
