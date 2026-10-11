@@ -49,3 +49,4 @@ questionSchema.index({ institutionId: 1, tags: 1 })
 module.exports = mongoose.models.Question || mongoose.model('Question', questionSchema)
 module.exports.TYPES = TYPES
 module.exports.DIFFICULTIES = DIFFICULTIES
+module.exports.codeSchema = codeSchema // reused by practice problems (copies of coding questions)

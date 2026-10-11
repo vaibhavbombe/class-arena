@@ -6,7 +6,7 @@ const connectMongo = require('./config/mongo')
 const { getRedis, redisStatus } = require('./lib/redis')
 const { attachRealtime } = require('./realtime')
 const { startJudgeWorker } = require('./judge/supervisor')
-const { judgeStatus } = require('./judge/queue')
+const { judgeStatus, startJudgeListener } = require('./judge/queue')
 
 const app = express()
 app.use(cors({ origin: process.env.CLIENT_URL }))
@@ -26,6 +26,7 @@ app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))
 app.use('/api/live-quizzes', require('./routes/liveQuizzes'))
 app.use('/api/live-games', require('./routes/liveGames'))
+app.use('/api/problems', require('./routes/problems'))
 // Before /api/tests, so attempt URLs never pass through the tests router first.
 app.use('/api/tests/:testId/attempt', require('./routes/attempts'))
 app.use('/api/tests', require('./routes/tests'))
@@ -55,6 +56,7 @@ connectMongo()
   .then(() => {
     getRedis() // connects in the background; /api/health reports its status
     startJudgeWorker() // separate process that runs student code (judge/worker.js)
+    if (process.env.REDIS_URL) startJudgeListener().catch((err) => console.error('Judge listener failed to start:', err.message))
     httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`))
   })
   .catch((err) => {

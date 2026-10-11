@@ -4,6 +4,7 @@ import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
 import ActiveGamesBanner from '../components/ActiveGamesBanner.jsx'
 import LiveQuizzesPanel from '../components/LiveQuizzesPanel.jsx'
+import ProblemsPanel from '../components/ProblemsPanel.jsx'
 import TestsPanel from '../components/TestsPanel.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
@@ -59,7 +60,7 @@ export default function ClassDetail() {
   }
 
   async function deleteClass() {
-    if (!window.confirm(`Delete "${cls.name}"? Its tests and live quizzes will be deleted and all ${cls.studentCount} students removed from it. This can't be undone.`)) return
+    if (!window.confirm(`Delete "${cls.name}"? Its tests, coding problems and live quizzes will be deleted and all ${cls.studentCount} students removed from it. This can't be undone.`)) return
     try {
       await api.delete(`/api/classes/${id}`)
       navigate('/dashboard')
@@ -101,6 +102,7 @@ export default function ClassDetail() {
 
           <ActiveGamesBanner classId={id} isStaff={isStaff} />
           <TestsPanel classId={id} isStaff={isStaff} />
+          <ProblemsPanel classId={id} isStaff={isStaff} />
           {isStaff && <LiveQuizzesPanel classId={id} />}
 
           {isStaff && (

@@ -10,6 +10,7 @@ const Enrollment = require('../models/Enrollment')
 const RefreshToken = require('../models/RefreshToken')
 const PasswordReset = require('../models/PasswordReset')
 const Attempt = require('../models/Attempt')
+const CodeSubmission = require('../models/CodeSubmission')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { authResponse, publicUser } = require('../lib/tokens')
 const { rejectInvalid } = require('../lib/validate')
@@ -53,6 +54,7 @@ router.delete('/members/:id', requireAuth, requireRole('admin'), async (req, res
   }
 
   await Attempt.deleteMany({ institutionId: req.institutionId, studentId: member._id })
+  await CodeSubmission.deleteMany({ institutionId: req.institutionId, studentId: member._id })
   await Enrollment.deleteMany({ institutionId: req.institutionId, studentId: member._id })
   await RefreshToken.deleteMany({ userId: member._id })
   await PasswordReset.deleteMany({ userId: member._id })
