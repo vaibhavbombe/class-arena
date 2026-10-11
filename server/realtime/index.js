@@ -1,6 +1,7 @@
 const { Server } = require('socket.io')
 const { authenticateToken } = require('../middleware/auth')
 const { initLiveGames, registerLiveGame } = require('./liveGame')
+const { initContests, registerContest } = require('./contests')
 
 // Socket.io for live features. Every connection must present the same access token the
 // HTTP API uses; the identity comes from the verified token, never from the client.
@@ -35,9 +36,11 @@ function attachRealtime(httpServer) {
     })
 
     registerLiveGame(socket)
+    registerContest(socket)
   })
 
   initLiveGames(io)
+  initContests(io)
   return io
 }
 

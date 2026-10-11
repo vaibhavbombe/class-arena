@@ -5,6 +5,8 @@ const { run, PW, call, check, invite, connectTestDb, finish } = require('./helpe
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 // Hidden inputs chosen to be easy to spot if they leak. The 4th is negative.
+// Timestamps are blanked before searching: '…T16:16:41Z' would otherwise match 41.
+const withoutDates = (value) => JSON.stringify(value).replace(/"\d{4}-\d\d-\d\dT[^"]*"/g, '""')
 const HIDDEN = [{ input: [41], expected: 82 }, { input: [43], expected: 86 }, { input: [47], expected: 94 }, { input: [-53], expected: -106 }]
 
 ;(async () => {
@@ -36,7 +38,7 @@ const HIDDEN = [{ input: [41], expected: 82 }, { input: [43], expected: 86 }, { 
   const annRun = await take(ann, 'function double(n) { return n < 0 ? 0 : n * 2 }') // fails the negative hidden test
   const codeView = annRun.byType.code
   check('student gets the coding question with samples and starter code', codeView.code.functionName === 'double' && codeView.code.sampleTests.length === 1 && codeView.code.hiddenTestCount === 4, codeView)
-  check('the attempt view never contains hidden test values', !/\b41\b|\b43\b|\b47\b|-53|-106|hiddenTests/.test(JSON.stringify(annRun.view)), null)
+  check('the attempt view never contains hidden test values', !/\b41\b|\b43\b|\b47\b|-53|-106|hiddenTests/.test(withoutDates(annRun.view)), null)
 
   const right_after = await Attempt.findOne({ testId: test.id, studentId: ann.user.id })
   check('right after submit: other questions graded, coding answer pending', right_after.score === 2 && right_after.codePending.length === 1, { score: right_after.score, pending: right_after.codePending })
@@ -69,7 +71,7 @@ const HIDDEN = [{ input: [41], expected: 82 }, { input: [43], expected: 86 }, { 
   const annReview = (await call('GET', `/api/tests/${test.id}/attempt`, null, ann.accessToken)).d
   const annCode = annReview.review?.questions.find((q) => q.yourCode !== undefined)
   check('after release the student sees their code and 3/4 hidden tests passed', annCode?.passedTests === 3 && annReview.review.score === 5, annCode)
-  check('the review never shows hidden test inputs', !/\b41\b|\b43\b|\b47\b|-53|-106/.test(JSON.stringify(annReview.review)), null)
+  check('the review never shows hidden test inputs', !/\b41\b|\b43\b|\b47\b|-53|-106/.test(withoutDates(annReview.review)), null)
 
   const stats = (await call('GET', `/api/tests/${test.id}/results`, null, T.accessToken)).d
   check('class results average the partial scores (5, 2, 2 of 6)', stats.stats.average === 3, stats.stats)

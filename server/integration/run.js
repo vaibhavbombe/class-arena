@@ -7,8 +7,10 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true
 
 const SUITES = [
   'auth', 'classes', 'passwordReset', 'passwordRules', 'members',
-  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests',
+  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests', 'contests',
 ]
+// Optional: npm run test:integration -- contests judge  (runs only those suites)
+const ONLY = process.argv.slice(2)
 const PORT = process.env.INTEGRATION_PORT || '5099'
 
 function databaseName(uri) {
@@ -50,7 +52,7 @@ async function main() {
   try {
     await ready
     console.log(`API running on port ${PORT} against database "${db}"\n`)
-    for (const suite of SUITES) {
+    for (const suite of SUITES.filter((name) => !ONLY.length || ONLY.includes(name))) {
       console.log(`=== ${suite}`)
       const code = await new Promise((resolve) => {
         runNode(path.join('integration', `${suite}.js`), { API_URL: `http://localhost:${PORT}`, REDIS_PREFIX: 'test' }).on('exit', resolve)
