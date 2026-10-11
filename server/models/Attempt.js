@@ -10,6 +10,11 @@ const resultSchema = new mongoose.Schema({
   correct: Boolean,
   earned: Number,
   max: Number,
+  // Coding questions: judged after submit (lib/codeGrading.js).
+  pending: { type: Boolean, default: undefined },
+  verdict: { type: String, default: undefined },
+  passed: { type: Number, default: undefined },
+  total: { type: Number, default: undefined },
 }, { _id: false })
 
 const attemptSchema = new mongoose.Schema({
@@ -32,6 +37,8 @@ const attemptSchema = new mongoose.Schema({
   score: { type: Number, default: null },
   maxScore: { type: Number, default: null },
   results: { type: [resultSchema], default: undefined },
+  // Indexes of coding questions still waiting for the judge.
+  codePending: { type: [Number], default: [] },
 }, { timestamps: true })
 
 // One attempt per student per test, enforced by the database (two quick "Start" clicks

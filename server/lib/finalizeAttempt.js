@@ -1,5 +1,6 @@
 const Attempt = require('../models/Attempt')
 const { gradeAttempt } = require('./grading')
+const { queueCodeGrading } = require('./codeGrading')
 
 // Grades and submits an attempt, safely against answer saves happening at the same time:
 // each save bumps `revision`, and the submit only lands if the revision it graded is
@@ -14,7 +15,11 @@ async function finalizeAttempt(attempt, test, submittedBy, now = new Date()) {
       { $set: { status: 'submitted', submittedAt: now, submittedBy, score, maxScore, results } },
       { returnDocument: 'after' },
     )
-    if (updated) return updated
+    if (updated) {
+      // Coding answers go to the judge now; their points arrive shortly after.
+      await queueCodeGrading(updated, test)
+      return updated
+    }
     current = await Attempt.findById(current._id)
     if (!current) return null
   }

@@ -51,3 +51,20 @@ test('gradeAttempt totals points per question', () => {
 test('gradeAttempt treats missing answers as wrong', () => {
   assert.equal(gradeAttempt([mcq, short], []).score, 0)
 })
+
+const codeItem = { type: 'code', points: 4, code: { functionName: 'f', hiddenTests: [{}, {}, {}, {}] } }
+
+test('coding items score 0 at submit and are pending only when there is code', () => {
+  const { results, score } = gradeAttempt([mcq, codeItem, codeItem], [{ selectedOptionIds: ['b'] }, { text: 'function f() {}' }, { text: '   ' }])
+  assert.equal(score, 2)
+  assert.deepEqual([results[1].pending, results[1].earned], [true, 0])
+  assert.deepEqual([results[2].pending, results[2].verdict], [false, 'No answer'])
+})
+
+test('codePoints gives partial credit per hidden test passed', () => {
+  const { codePoints } = require('../lib/grading')
+  assert.equal(codePoints(4, 3, 4), 3)
+  assert.equal(codePoints(5, 1, 3), 1.67)
+  assert.equal(codePoints(4, 0, 4), 0)
+  assert.equal(codePoints(4, 2, 0), 0)
+})

@@ -10,6 +10,7 @@ function normalizeText(text, caseSensitive) {
 // options (all-or-nothing). Short answer: matches any accepted answer after normalising.
 function isCorrect(item, answer) {
   if (!answer) return false
+  if (item.type === 'code') return false // graded later by the judge (lib/codeGrading.js)
   if (item.type === 'short') {
     const given = normalizeText(answer.text, item.caseSensitive)
     if (!given) return false
@@ -22,8 +23,20 @@ function isCorrect(item, answer) {
 }
 
 // items: the test's copies of its questions; answers: aligned by index.
+// Coding answers: points in proportion to hidden tests passed, rounded to 2 decimals.
+function codePoints(points, passed, total) {
+  if (!total) return 0
+  return Math.round(points * (passed / total) * 100) / 100
+}
+
+// Coding items score 0 here and are marked pending when there's code to judge; the judge
+// fills them in afterwards. An empty coding answer is simply 0.
 function gradeAttempt(items, answers) {
   const results = items.map((item, index) => {
+    if (item.type === 'code') {
+      const hasCode = Boolean(answers[index]?.text?.trim())
+      return { index, correct: false, earned: 0, max: item.points, pending: hasCode, verdict: hasCode ? null : 'No answer' }
+    }
     const correct = isCorrect(item, answers[index])
     return { index, correct, earned: correct ? item.points : 0, max: item.points }
   })
@@ -34,4 +47,4 @@ function gradeAttempt(items, answers) {
   }
 }
 
-module.exports = { normalizeText, isCorrect, gradeAttempt }
+module.exports = { normalizeText, isCorrect, gradeAttempt, codePoints }

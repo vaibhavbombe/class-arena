@@ -1,7 +1,11 @@
 import { colors } from '../styles.js'
 import { formatWhen } from '../testFormat.jsx'
 
-const mark = (ok) => (ok ? { symbol: '✓', color: colors.success } : { symbol: '✗', color: colors.danger })
+const MONO = "ui-monospace, 'Cascadia Code', Consolas, monospace"
+// Right, partly right (coding questions earn points per hidden test), or wrong.
+const mark = (question) => (question.correct
+  ? { symbol: '✓', color: colors.success }
+  : question.earned > 0 ? { symbol: '◑', color: colors.primary } : { symbol: '✗', color: colors.danger })
 
 // A marked attempt: score, then each question with the answer given and the correct one.
 // Used for a student's own results and for a teacher looking at one student.
@@ -14,9 +18,14 @@ export default function AttemptReview({ review }) {
       <p style={{ color: colors.muted, fontSize: '0.85rem', marginTop: '0.25rem' }}>
         Submitted {formatWhen(review.submittedAt)}{review.submittedBy === 'timeout' ? ' (automatically, when time ran out)' : ''}
       </p>
+      {review.gradingPending > 0 && (
+        <p role="status" style={{ color: colors.primary, fontWeight: 700, fontSize: '0.9rem' }}>
+          ⏳ {review.gradingPending} coding answer{review.gradingPending > 1 ? 's are' : ' is'} still being graded. The score may go up; refresh in a moment.
+        </p>
+      )}
 
       {review.questions.map((question) => {
-        const { symbol, color } = mark(question.correct)
+        const { symbol, color } = mark(question)
         return (
           <article key={question.number} style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderLeft: `5px solid ${color}`, borderRadius: '12px', padding: '0.8rem 1rem', marginTop: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem' }}>
@@ -25,7 +34,20 @@ export default function AttemptReview({ review }) {
             </div>
             <p style={{ whiteSpace: 'pre-wrap', margin: '0.4rem 0' }}>{question.prompt}</p>
 
-            {question.type === 'short' ? (
+            {question.type === 'code' ? (
+              <div style={{ fontSize: '0.9rem' }}>
+                <p style={{ margin: '0.2rem 0', fontWeight: 700, color: question.pending ? colors.primary : color }}>
+                  {question.pending
+                    ? '⏳ Grading…'
+                    : question.totalTests
+                      ? `${question.passedTests} of ${question.totalTests} hidden tests passed · ${question.verdict}`
+                      : question.verdict || 'No answer'}
+                </p>
+                {question.yourCode?.trim()
+                  ? <pre style={{ fontFamily: MONO, fontSize: '0.8rem', background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: '8px', padding: '0.6rem', overflowX: 'auto', margin: '0.3rem 0 0' }}>{question.yourCode}</pre>
+                  : <p style={{ margin: '0.2rem 0', color: colors.muted }}>(no code written)</p>}
+              </div>
+            ) : question.type === 'short' ? (
               <div style={{ fontSize: '0.9rem' }}>
                 <p style={{ margin: '0.2rem 0' }}>
                   Answer given: <strong style={{ color }}>{question.yourText?.trim() ? question.yourText : '(blank)'}</strong>

@@ -46,7 +46,7 @@ const code = (extra = {}) => ({
 
   const test = (await call('POST', '/api/tests', { classId: cls.id }, T.accessToken)).d
   const addToTest = await call('PUT', `/api/tests/${test.id}`, { items: [{ questionId: qid, points: 1 }] }, T.accessToken)
-  check("coding questions can't be added to tests yet (clear 400)", addToTest.s === 400 && /Coding questions/.test(addToTest.d.error), addToTest)
+  check('coding questions can be added to tests (graded by the judge; see codeInTests)', addToTest.s === 200 && addToTest.d.items[0].type === 'code', addToTest.s)
   const quiz = (await call('POST', '/api/live-quizzes', { classId: cls.id }, T.accessToken)).d
   const addToQuiz = await call('PUT', `/api/live-quizzes/${quiz.id}`, { items: [{ questionId: qid }] }, T.accessToken)
   check('or to live quizzes', addToQuiz.s === 400, addToQuiz)

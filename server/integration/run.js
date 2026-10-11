@@ -7,7 +7,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true
 
 const SUITES = [
   'auth', 'classes', 'passwordReset', 'passwordRules', 'members',
-  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice',
+  'questions', 'tests', 'attempts', 'results', 'raceSubmit', 'realtime', 'liveQuizzes', 'liveGame', 'analytics', 'judge', 'codeQuestions', 'practice', 'codeInTests',
 ]
 const PORT = process.env.INTEGRATION_PORT || '5099'
 

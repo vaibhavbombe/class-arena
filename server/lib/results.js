@@ -21,6 +21,8 @@ function reviewView(test, attempt) {
     percent: attempt.maxScore ? round1((attempt.score / attempt.maxScore) * 100) : 0,
     submittedAt: attempt.submittedAt,
     submittedBy: attempt.submittedBy,
+    // Coding answers still with the judge (the score may still go up).
+    gradingPending: (attempt.codePending || []).length,
     questions: attempt.questionOrder.map((index, position) => {
       const item = test.items[index]
       const answer = attempt.answers[index] || { selectedOptionIds: [], text: '' }
@@ -33,6 +35,10 @@ function reviewView(test, attempt) {
         earned: result.earned,
         correct: result.correct,
         explanation: item.explanation || '',
+      }
+      if (item.type === 'code') {
+        // The student's own code and how it did on the hidden tests (never their inputs).
+        return { ...base, yourCode: answer.text, functionName: item.code?.functionName, pending: Boolean(result.pending), verdict: result.verdict || null, passedTests: result.passed ?? null, totalTests: result.total ?? null }
       }
       if (item.type === 'short') {
         return { ...base, yourText: answer.text, acceptedAnswers: item.acceptedAnswers }

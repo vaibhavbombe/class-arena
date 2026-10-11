@@ -7,6 +7,7 @@ const { findVisibleClass } = require('../lib/classAccess')
 const { testStatus } = require('../lib/testRules')
 const rules = require('../lib/attemptRules')
 const { finalizeAttempt } = require('../lib/finalizeAttempt')
+const { settleCodeGrading } = require('../lib/codeGrading')
 const { canSeeResults, reviewView } = require('../lib/results')
 
 // Mounted at /api/tests/:testId/attempt. Students take tests here; every time limit
@@ -38,6 +39,8 @@ async function loadAttempt(req, test, now) {
   if (attempt && attempt.status === 'in_progress' && rules.isPastDeadline(attempt, now)) {
     return finalizeAttempt(attempt, test, 'timeout', attempt.deadline)
   }
+  // Coding answers still being judged: pick up finished results now.
+  if (attempt?.codePending?.length) return settleCodeGrading(attempt)
   return attempt
 }
 

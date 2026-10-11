@@ -12,8 +12,8 @@ import { StatusBadge, fromLocalInput, toLocalInput, windowText } from '../testFo
 const labelStyle = { display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.85rem', color: colors.muted }
 const cardStyle = { background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: '8px', padding: '0.7rem 0.9rem', marginTop: '0.5rem' }
 const smallButton = { ...ghostButtonStyle, padding: '0.2rem 0.5rem' }
-// Coding questions can't be graded inside tests yet, so the picker leaves them out.
-const TEST_TYPES = ['mcq', 'multi', 'short']
+// Every question type can go in a test (coding answers are graded by the judge after submit).
+const TEST_TYPES = ['mcq', 'multi', 'short', 'code']
 
 function settingsFrom(test) {
   return {
@@ -28,6 +28,9 @@ function settingsFrom(test) {
 }
 
 function AnswerKey({ item }) {
+  if (item.type === 'code') {
+    return <p style={{ margin: '0.3rem 0 0', fontSize: '0.8rem', color: colors.muted }}><code>{item.code.functionName}()</code> · {item.code.sampleTests.length} sample · {item.code.hiddenTests.length} hidden tests (points per hidden test passed)</p>
+  }
   if (item.type === 'short') {
     return <p style={{ margin: '0.3rem 0 0', fontSize: '0.8rem', color: colors.success }}>Accepts: {item.acceptedAnswers.join(' · ')}</p>
   }

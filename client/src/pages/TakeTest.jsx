@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
 import AttemptReview from '../components/AttemptReview.jsx'
+import CodeAnswer from '../components/CodeAnswer.jsx'
 import { errorMessage } from '../session.js'
 import { buttonStyle, colors, inputStyle, linkStyle, messageStyle, widePageStyle } from '../styles.js'
 import { StatusBadge, formatWhen, windowText } from '../testFormat.jsx'
@@ -251,7 +252,9 @@ export default function TakeTest({ me }) {
               Question {question.number} · {question.points} pt{question.points > 1 ? 's' : ''}{question.type === 'multi' ? ' · select all that apply' : ''}
             </legend>
             <p style={{ marginTop: 0, whiteSpace: 'pre-wrap' }}>{question.prompt}</p>
-            {question.type === 'short' ? (
+            {question.type === 'code' ? (
+              <CodeAnswer question={question} value={answer.text} onChange={(text) => setAnswer(question.index, { selectedOptionIds: [], text })} />
+            ) : question.type === 'short' ? (
               <input
                 value={answer.text}
                 onChange={(event) => setAnswer(question.index, { selectedOptionIds: [], text: event.target.value })}

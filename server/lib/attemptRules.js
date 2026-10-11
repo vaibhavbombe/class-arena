@@ -5,6 +5,7 @@ const crypto = require('crypto')
 // Saves and submits that arrive a few seconds late (network delay) still count.
 const GRACE_MS = 5000
 const MAX_TEXT = 1000
+const MAX_CODE = 50000 // same cap as the judge
 
 // Fisher–Yates with a cryptographic random source, so the order can't be predicted.
 function shuffled(list) {
@@ -46,6 +47,11 @@ function isPastDeadline(attempt, now = new Date()) {
 // Validates one answer from the student against the question it's for.
 function parseAnswer(item, answer) {
   if (!answer || typeof answer !== 'object') return { error: 'Each answer must be an object' }
+  if (item.type === 'code') {
+    if (typeof answer.text !== 'string') return { error: 'Code must be text' }
+    if (answer.text.length > MAX_CODE) return { error: `Code can be at most ${MAX_CODE} characters` }
+    return { answer: { selectedOptionIds: [], text: answer.text } }
+  }
   if (item.type === 'short') {
     if (typeof answer.text !== 'string') return { error: 'A short answer must be text' }
     if (answer.text.length > MAX_TEXT) return { error: `Answers can be at most ${MAX_TEXT} characters` }
@@ -104,8 +110,18 @@ function studentAttemptView(test, attempt, now = new Date()) {
         type: item.type,
         prompt: item.prompt,
         points: item.points,
-        ...(item.type !== 'short' && {
+        ...((item.type === 'mcq' || item.type === 'multi') && {
           options: attempt.optionOrders[index].map((id) => ({ id, text: optionsById.get(id).text })),
+        }),
+        // Coding: what's needed to write and Run against samples; never the hidden tests.
+        ...(item.type === 'code' && {
+          code: {
+            functionName: item.code.functionName,
+            starterCode: item.code.starterCode,
+            sampleTests: item.code.sampleTests.map(({ input, expected }) => ({ input, expected })),
+            hiddenTestCount: item.code.hiddenTests.length,
+            timeLimitMs: item.code.timeLimitMs,
+          },
         }),
         answer: attempt.answers[index],
       }

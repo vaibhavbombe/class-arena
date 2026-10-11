@@ -73,3 +73,16 @@ test('median of an even number of scores is the mean of the middle two', () => {
   const stats = summarize(theTest, [attempt({ score: 1 }), attempt({ score: 4 })])
   assert.equal(stats.median, 2.5)
 })
+
+test('reviewView shows a coding answer with its hidden-test score, and pending grading', () => {
+  const codeTest = { items: [{ type: 'code', points: 4, prompt: 'Write f', code: { functionName: 'f', hiddenTests: [{ input: [31337], expected: 1 }] } }] }
+  const review = reviewView(codeTest, {
+    status: 'submitted', score: 3, maxScore: 4, questionOrder: [0], optionOrders: [[]], codePending: [],
+    answers: [{ selectedOptionIds: [], text: 'function f() { return 1 }' }],
+    results: [{ index: 0, correct: false, earned: 3, max: 4, verdict: 'Wrong Answer', passed: 3, total: 4 }],
+  })
+  const q = review.questions[0]
+  assert.deepEqual([q.yourCode, q.passedTests, q.totalTests, q.earned, q.pending], ['function f() { return 1 }', 3, 4, 3, false])
+  assert.ok(!JSON.stringify(review).includes('31337'))
+  assert.equal(review.gradingPending, 0)
+})
