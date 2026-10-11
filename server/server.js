@@ -13,7 +13,9 @@ const app = express()
 // Behind Render's proxy the client IP is in X-Forwarded-For. Trust exactly as many proxy hops
 // as there are, so req.ip (used by rate limits) is the real client and can't be spoofed by
 // sending a fake X-Forwarded-For. Locally there is no proxy.
-app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? (process.env.RENDER ? 1 : 0)))
+// Measured on Render (Oct 2026): a request arrives with 3 X-Forwarded-For entries (client + 2
+// proxies), so 3 hops are trusted there. Re-check with /api/debug/proxy-hops if hosting changes.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? (process.env.RENDER ? 3 : 0)))
 app.use(cors({ origin: process.env.CLIENT_URL }))
 app.use(express.json())
 
