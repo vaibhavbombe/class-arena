@@ -1,5 +1,4 @@
-const { test, expect } = require('@playwright/test')
-const { setupClass, login } = require('./helpers')
+const { test, expect, setupClass, login } = require('./helpers')
 
 test('login: a wrong password is refused, the right one opens the dashboard with the class', async ({ page }) => {
   const { cls, students } = await setupClass({ className: 'Physics 101' })

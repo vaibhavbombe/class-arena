@@ -1,5 +1,4 @@
-const { test, expect } = require('@playwright/test')
-const { call, setupClass, login } = require('./helpers')
+const { test, expect, call, setupClass, login, watchCsp } = require('./helpers')
 
 // Two browsers at once: the teacher hosts on one screen, a student plays on another, and
 // everything between them goes over Socket.io.
@@ -15,6 +14,7 @@ test('live quiz: a student joins with the PIN, answers, and both screens follow 
   const playerContext = await browser.newContext()
   const host = await hostContext.newPage()
   const player = await playerContext.newPage()
+  const violations = [host, player].map(watchCsp)
 
   await login(host, admin.email)
   await host.goto(`/live-games/${game.id}/host`)
@@ -36,6 +36,7 @@ test('live quiz: a student joins with the PIN, answers, and both screens follow 
   await host.getByRole('button', { name: /Show podium/ }).click()
   await expect(player.getByText('1st place')).toBeVisible()
 
+  expect(violations.flat(), 'Content-Security-Policy violations').toEqual([])
   await hostContext.close()
   await playerContext.close()
 })

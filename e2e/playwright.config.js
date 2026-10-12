@@ -49,11 +49,12 @@ module.exports = defineConfig({
       },
     },
     {
-      command: `npx vite --port ${CLIENT_PORT} --strictPort`,
-      cwd: path.join(__dirname, '..', 'client'),
+      // The production build, served with the same headers (including the CSP) as Vercel.
+      command: `npm run build --prefix ../client && node serve-dist.js ${CLIENT_PORT} ${API_URL}`,
+      cwd: __dirname,
       url: CLIENT_URL,
       reuseExistingServer: false,
-      timeout: 60_000,
+      timeout: 180_000,
       env: { ...process.env, VITE_API_URL: API_URL },
     },
   ],

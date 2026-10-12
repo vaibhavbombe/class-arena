@@ -1,3 +1,32 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" }
+      ]
+    },
+    {
+      "source": "/((?!assets/runner\\.worker-).*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/ data:; img-src 'self' data: blob:; connect-src 'self' https://class-arena-server.onrender.com wss://class-arena-server.onrender.com https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/assets/runner\\.worker-(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'"
+        }
+      ]
+    }
+  ]
 }
