@@ -7,7 +7,7 @@ const { getRedis, redisStatus } = require('./lib/redis')
 const { attachRealtime } = require('./realtime')
 const { startJudgeWorker } = require('./judge/supervisor')
 const { judgeStatus, startJudgeListener } = require('./judge/queue')
-const { aiConfig, describeConfig } = require('./lib/ai/client')
+const { aiConfig, describeConfig, lastAiFailure } = require('./lib/ai/client')
 
 const app = express()
 // Behind Render's proxy the client IP is in X-Forwarded-For. Trust exactly as many proxy hops
@@ -28,6 +28,8 @@ app.get('/api/health', async (req, res) => res.json({
   redis: redisStatus(),
   judge: await judgeStatus(), // is a judge worker alive (heartbeat in Redis)?
   ai: aiConfig().enabled ? 'on' : 'off', // hints fall back to fixed text when off
+  aiModel: aiConfig().enabled ? aiConfig().model : undefined,
+  aiLastError: lastAiFailure() || undefined, // reason code + time only
 }))
 
 app.use('/api/auth', require('./routes/auth'))

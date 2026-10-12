@@ -89,7 +89,13 @@ async function chatJSON({ messages, validate, maxTokens = 400, temperature = 0.3
     if (attempt < attempts) await sleep(retryDelayMs * attempt)
   }
   console.warn(`AI call failed: ${reason}`) // the reason code only: no prompt, output or key
+  lastFailure = { reason, at: new Date().toISOString() }
   return { ok: false, reason, attempts: used }
 }
 
-module.exports = { aiConfig, describeConfig, chatJSON, extractJson, DEFAULT_MODEL }
+// For /api/health: the most recent failure's reason code (e.g. http_404, timeout, invalid_output)
+// and time, so problems are visible without server logs. Never any prompt, output or key.
+let lastFailure = null
+const lastAiFailure = () => lastFailure
+
+module.exports = { aiConfig, describeConfig, chatJSON, extractJson, lastAiFailure, DEFAULT_MODEL }
