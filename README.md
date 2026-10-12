@@ -191,7 +191,8 @@ Vercel (client), Render (server)
   Each hint is saved once (a unique index on problem, student and level), so reloading or double-clicking
   never pays twice. The hard cap is the credit limit set on the OpenRouter key itself. The code's default
   model is `anthropic/claude-haiku-5.5` (chosen for price); `AI_MODEL` changes it. The live demo uses a free
-  OpenRouter model (`google/gemma-4-31b-it:free`, set in `render.yaml`): it costs nothing but is rate-limited,
+  OpenRouter models (a fallback list in `render.yaml`, since `AI_MODEL` takes several, comma-separated, and OpenRouter
+  moves to the next one when a model answers 429; the first free model was rate-limited on day one): they cost nothing but are rate-limited,
   some free providers may log prompts (which include students' code), and when it fails or answers badly the
   student gets the standard hint or feedback instead.
 - **Student code never runs in the API process.** The API puts a job on a Redis queue; a separate judge

@@ -8,19 +8,23 @@ const { fingerprint } = require('../fingerprint')
 const DEFAULT_MODEL = 'anthropic/claude-haiku-5.5'
 const RETRYABLE = new Set(['timeout', 'network', 'invalid_json', 'invalid_output', 'http_429', 'http_500', 'http_502', 'http_503', 'http_504'])
 
+// AI_MODEL can list several models, comma-separated. OpenRouter tries them in order when one is
+// rate-limited or unavailable (its `models` fallback list), which matters for free models.
 function aiConfig(env = process.env) {
   const key = env.OPENROUTER_API_KEY || ''
+  const models = (env.AI_MODEL || DEFAULT_MODEL).split(',').map((m) => m.trim()).filter(Boolean)
   return {
     enabled: Boolean(key) && env.AI_DISABLED !== 'true',
     key,
-    model: env.AI_MODEL || DEFAULT_MODEL,
+    model: models[0] || DEFAULT_MODEL,
+    models: models.length ? models : [DEFAULT_MODEL],
     baseUrl: (env.AI_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, ''),
   }
 }
 
 function describeConfig(config = aiConfig()) {
   if (!config.enabled) return 'AI: off (OPENROUTER_API_KEY not set or AI_DISABLED=true); fallback hints only'
-  return `AI: ${config.model} via ${new URL(config.baseUrl).host} (key fingerprint ${fingerprint(config.key)})`
+  return `AI: ${(config.models || [config.model]).join(', ')} via ${new URL(config.baseUrl).host} (key fingerprint ${fingerprint(config.key)})`
 }
 
 // Models sometimes wrap JSON in ```json fences or add a sentence; take the outermost object.
@@ -51,11 +55,18 @@ async function callOnce({ config, messages, maxTokens, temperature, timeoutMs, f
         'X-Title': 'ClassArena',
         ...(process.env.CLIENT_URL ? { 'HTTP-Referer': process.env.CLIENT_URL } : {}),
       },
-      body: JSON.stringify({ model: config.model, messages, max_tokens: maxTokens, temperature }),
+      body: JSON.stringify({
+        model: config.model,
+        ...((config.models || []).length > 1 ? { models: config.models } : {}),
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+      }),
     })
     if (!response.ok) return { reason: `http_${response.status}` }
     const body = await response.json().catch(() => null)
-    return { text: body?.choices?.[0]?.message?.content, usage: body?.usage }
+    // With a fallback list, `model` says which one actually answered.
+    return { text: body?.choices?.[0]?.message?.content, usage: body?.usage, model: body?.model }
   } catch (err) {
     return { reason: err.name === 'AbortError' ? 'timeout' : 'network' }
   } finally {
@@ -81,7 +92,7 @@ async function chatJSON({ messages, validate, maxTokens = 400, temperature = 0.3
       if (data === undefined) reason = 'invalid_json'
       else {
         const error = validate(data)
-        if (!error) return { ok: true, data, attempts: attempt, model: config.model, usage: result.usage }
+        if (!error) return { ok: true, data, attempts: attempt, model: result.model || config.model, usage: result.usage }
         reason = 'invalid_output'
       }
     }

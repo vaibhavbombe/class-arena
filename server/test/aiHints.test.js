@@ -81,6 +81,23 @@ test('chatJSON: disabled config makes no request; the log line never contains th
   assert.ok(!line.includes('sk-test-secret') && line.includes('test/model'))
 })
 
+test('AI_MODEL can list fallback models; the request carries them and the answering model is reported', async () => {
+  const parsed = aiConfig({ OPENROUTER_API_KEY: 'k', AI_MODEL: ' a/one:free , b/two:free,, c/three ' })
+  assert.deepEqual([parsed.model, parsed.models], ['a/one:free', ['a/one:free', 'b/two:free', 'c/three']])
+  assert.deepEqual(aiConfig({ OPENROUTER_API_KEY: 'k' }).models, ['anthropic/claude-haiku-5.5'])
+
+  const answered = async () => ({ ok: true, status: 200, json: async () => ({ model: 'b/two:free', choices: [{ message: { content: good } }] }) })
+  const { fetchImpl, calls } = sequence(answered)
+  const result = await chatJSON({ messages: [], validate, fetchImpl, config: { ...config, model: 'a/one:free', models: ['a/one:free', 'b/two:free'] }, retryDelayMs: 0 })
+  const body = JSON.parse(calls[0].init.body)
+  assert.deepEqual([body.model, body.models], ['a/one:free', ['a/one:free', 'b/two:free']])
+  assert.equal(result.model, 'b/two:free')
+
+  const single = sequence(reply(good))
+  await chatJSON({ messages: [], validate, fetchImpl: single.fetchImpl, config, retryDelayMs: 0 })
+  assert.equal('models' in JSON.parse(single.calls[0].init.body), false) // one model: no list sent
+})
+
 test('looksLikeSolution catches code but allows plain-English hints', () => {
   for (const code of [
     '```js\nreturn 1\n```', 'Try `let total = 0;` first', 'function sum(nums) { }', 'Use nums.reduce((a, b) => a + b, 0)',
