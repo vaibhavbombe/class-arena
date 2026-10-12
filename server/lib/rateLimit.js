@@ -1,4 +1,5 @@
 const { getRedis } = require('./redis')
+const { clientIp } = require('./clientIp')
 
 // Rate limits with fixed-window counters in Redis (shared by every server instance, kept
 // across restarts). Two kinds:
@@ -71,7 +72,7 @@ function tooMany(res, retryAfterSec, message = 'Too many requests. Please wait a
 // Middleware: at most `limit` requests per IP per window for this route.
 function limitRequests({ name, limit, windowSec, message }) {
   return async (req, res, next) => {
-    const result = await hit(name, req.ip, windowSec)
+    const result = await hit(name, clientIp(req), windowSec)
     if (result && result.count > limit) return tooMany(res, result.retryAfterSec, message)
     next()
   }
