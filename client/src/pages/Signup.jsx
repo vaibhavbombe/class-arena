@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import api from '../api.js'
+import { authApi } from '../api.js'
 import { errorMessage, saveSession } from '../session.js'
 import PasswordChecklist from '../components/PasswordChecklist.jsx'
 import { passwordIsValid } from '../passwordRules.js'
@@ -27,7 +27,7 @@ export default function Signup() {
     setSubmitting(true)
 
     try {
-      const response = await api.post('/api/auth/signup', form)
+      const response = await authApi.post('/api/auth/signup', form)
       saveSession(response.data)
       navigate('/dashboard')
     } catch (requestError) {

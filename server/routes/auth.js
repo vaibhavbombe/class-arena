@@ -8,6 +8,7 @@ const Class = require('../models/Class')
 const Enrollment = require('../models/Enrollment')
 const PasswordReset = require('../models/PasswordReset')
 const { signAccessToken, issueRefreshToken, authResponse } = require('../lib/tokens')
+const { setRefreshCookie, clearRefreshCookie, readRefreshCookie } = require('../lib/authCookie')
 const { rejectInvalid } = require('../lib/validate')
 const { normalizeJoinCode } = require('../lib/joinCode')
 const { sendMail } = require('../lib/mailer')
@@ -48,7 +49,7 @@ router.post('/signup', limitRequests(LIMITS.signup.perIp), async (req, res) => {
   }
 
   res.status(201).json({
-    ...(await authResponse(user)),
+    ...(await authResponse(user, res)),
     institution: { id: institution._id, name: institution.name },
   })
 })
@@ -81,7 +82,7 @@ router.post('/student-signup', limitRequests(LIMITS.studentSignup.perIp), async 
   await Enrollment.create({ institutionId: cls.institutionId, classId: cls._id, studentId: user._id })
 
   res.status(201).json({
-    ...(await authResponse(user)),
+    ...(await authResponse(user, res)),
     class: { id: cls._id, name: cls.name },
   })
 })
@@ -108,24 +109,32 @@ router.post('/login', limitRequests(LIMITS.login.perIp), async (req, res) => {
   }
   await clear(failures[0].name, failures[0].id)
 
-  res.json(await authResponse(user))
+  res.json(await authResponse(user, res))
 })
 
 router.post('/refresh', limitRequests(LIMITS.refresh.perIp), async (req, res) => {
-  if (rejectInvalid(res, req.body, ['refreshToken'])) return
+  // The token comes from the httpOnly cookie. A token in the body is still accepted so that
+  // sessions from before the cookie change (token in localStorage) can move over once.
+  const token = readRefreshCookie(req) || (typeof req.body?.refreshToken === 'string' ? req.body.refreshToken : '')
+  if (!token) return res.status(401).json({ error: 'Not logged in' })
 
   // Rotation: each refresh token is single-use. findOneAndDelete is atomic, so two
   // parallel requests with the same token can't both get new tokens.
-  const stored = await RefreshToken.findOneAndDelete({ token: req.body.refreshToken })
+  const stored = await RefreshToken.findOneAndDelete({ token })
   if (!stored || stored.expiresAt < new Date()) {
+    clearRefreshCookie(res)
     return res.status(401).json({ error: 'Invalid or expired refresh token' })
   }
 
   // Reload the user so the new access token carries their current institute and role.
   const user = await User.findById(stored.userId)
-  if (!user) return res.status(401).json({ error: 'User no longer exists' })
+  if (!user) {
+    clearRefreshCookie(res)
+    return res.status(401).json({ error: 'User no longer exists' })
+  }
 
-  res.json({ accessToken: signAccessToken(user), refreshToken: await issueRefreshToken(user._id) })
+  setRefreshCookie(res, await issueRefreshToken(user._id))
+  res.json({ accessToken: signAccessToken(user) })
 })
 
 // Always answers the same way, whether or not the email has an account, so the form
@@ -188,10 +197,11 @@ router.post('/reset-password', limitRequests(LIMITS.resetPassword.perIp), async 
 })
 
 router.post('/logout', async (req, res) => {
-  const refreshToken = req.body?.refreshToken
+  const refreshToken = readRefreshCookie(req) || req.body?.refreshToken
   if (typeof refreshToken === 'string' && refreshToken) {
     await RefreshToken.deleteOne({ token: refreshToken })
   }
+  clearRefreshCookie(res)
   res.json({ message: 'Logged out' })
 })
 

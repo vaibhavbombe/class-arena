@@ -1,12 +1,13 @@
 import { io } from 'socket.io-client'
-import api, { API_URL } from './api.js'
+import { API_URL, refreshAccessToken } from './api.js'
+import { getAccessToken } from './auth.js'
 
-// Opens a Socket.io connection that logs in with the current access token.
-// If the token has expired, the server refuses the connection; asking the API for /me
-// makes the axios interceptor refresh the token, and then we connect again.
+// Opens a Socket.io connection that logs in with the current access token (kept in memory).
+// If the token has expired, the server refuses the connection; we get a new access token
+// from the refresh cookie and connect again.
 export function connectSocket() {
   const socket = io(API_URL, {
-    auth: (send) => send({ token: localStorage.getItem('accessToken') }),
+    auth: (send) => send({ token: getAccessToken() }),
     transports: ['websocket', 'polling'],
   })
 
@@ -16,10 +17,10 @@ export function connectSocket() {
     if (err.message !== 'unauthorized' || authRetries >= 2) return
     authRetries += 1
     try {
-      await api.get('/api/me') // refreshes the token (or sends the user to /login)
+      await refreshAccessToken()
       socket.connect()
     } catch {
-      // The interceptor already redirected to the login page.
+      window.location.assign('/login')
     }
   })
   return socket

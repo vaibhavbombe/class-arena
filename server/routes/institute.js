@@ -141,7 +141,7 @@ router.post('/invites/accept', limitRequests(LIMITS.inviteAccept.perIp), async (
     throw err
   }
 
-  res.status(201).json(await authResponse(user))
+  res.status(201).json(await authResponse(user, res))
 })
 
 module.exports = router

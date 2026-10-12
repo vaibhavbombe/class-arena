@@ -1,43 +1,25 @@
-import api from './api.js'
+import { authApi } from './api.js'
+import { SESSION_MARKER, clearAuth, setAccessToken } from './auth.js'
 
-export function saveSession({ accessToken, refreshToken }) {
-  localStorage.setItem('accessToken', accessToken)
-  localStorage.setItem('refreshToken', refreshToken)
+export { isLoggedIn, tokenUserId } from './auth.js'
+
+// After login/signup: the server has set the refresh cookie; keep the access token in memory.
+export function saveSession({ accessToken }) {
+  setAccessToken(accessToken)
 }
 
 export async function logout() {
-  const refreshToken = localStorage.getItem('refreshToken')
-  await api.post('/api/auth/logout', { refreshToken }).catch(() => {})
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
+  await authApi.post('/api/auth/logout').catch(() => {})
+  clearAuth()
 }
 
-// Reads the user id out of a JWT without verifying it. Only used to decide what the
-// UI shows; the server verifies the signature on every request.
-export function tokenUserId(token) {
-  try {
-    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(atob(payload)).userId
-  } catch {
-    return null
-  }
-}
-
-export function isLoggedIn() {
-  return Boolean(localStorage.getItem('accessToken'))
-}
-
-// localStorage is shared by every tab of the site. If another tab logs in as someone
-// else or logs out, reload this tab so it never shows one user's screen with another
-// user's token. A token refresh for the same user changes nothing.
+// Every tab of the site shares the refresh cookie. If another tab logs in as someone else or
+// logs out, reload this tab so it never shows one user's screen with another user's session.
 export function watchOtherTabs() {
   function handleStorage(event) {
-    if (event.key !== 'accessToken') return
-    if (!event.newValue) {
-      window.location.assign('/login')
-    } else if (tokenUserId(event.newValue) !== tokenUserId(event.oldValue)) {
-      window.location.reload()
-    }
+    if (event.key !== SESSION_MARKER) return
+    if (!event.newValue) window.location.assign('/login')
+    else if (event.newValue !== event.oldValue) window.location.reload()
   }
   window.addEventListener('storage', handleStorage)
   return () => window.removeEventListener('storage', handleStorage)

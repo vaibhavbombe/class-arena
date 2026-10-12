@@ -18,8 +18,8 @@ first request after it has been idle can take ~50 seconds)
     removes members and hands a class to another teacher.
   - *Teacher*: creates and deletes classes, sees join codes and rosters, removes students from a class.
   - *Student*: signs up with a 6-character class join code and can join more classes from the dashboard.
-- **Auth:** 15-minute JWT access tokens plus 30-day refresh tokens that rotate on every use,
-  with an axios interceptor that refreshes silently on a 401.
+- **Auth:** 15-minute JWT access tokens kept in memory, plus 30-day refresh tokens in an httpOnly cookie
+  that rotate on every use, with an axios interceptor that refreshes silently on a 401 (and after a reload).
 - **Question bank** (teachers and admins): multiple choice, multi-select and short-answer questions
   with tags, difficulty, an explanation, search and filters. Teachers see their own questions; admins
   see the whole institute. Students can't reach it at all.
@@ -211,7 +211,18 @@ Vercel (client), Render (server)
   per student, 20 wrong codes per IP at signup, and 20 wrong game PINs per student. The check runs before
   bcrypt, treats unknown emails exactly like real ones, and answers 429 with `Retry-After`. Behind Render's
   proxy the client IP comes from `X-Forwarded-For` with Express's `trust proxy` set to the exact number of
-  proxy hops, so a client can't pick its own IP by sending that header.
+  proxy hops, so a client can't pick its own IP by sending that header. Both hop counts were measured on the
+  deployed service rather than guessed (the first guess was wrong and made every user share a proxy's IP).
+- **The refresh token is an httpOnly cookie that has to be first-party.** Page scripts can't read it, so an
+  injected script can't take a 30-day login away with it; the access token lives only in memory and is fetched
+  again after a reload. The client (Vercel) and API (Render) are on different sites, and Safari blocks
+  third-party cookies, so the browser sends auth requests (`/api/auth/*`, invite accept) to the client's own
+  domain: a Vercel middleware (`client/middleware.js`) forwards them to the API, which makes the cookie
+  first-party (`SameSite=Strict`, `Path=/api/auth`). Everything else, including Socket.io, still goes straight
+  to the API with the access token. Forwarding hides the visitor's IP from the API, so the middleware adds the
+  IP Vercel saw plus a secret shared with the API (`PROXY_SECRET`); the API believes that IP only when the
+  secret matches (constant-time compare), so calling the API directly with made-up headers doesn't work.
+  What it doesn't stop: a script injected into the page can still make requests while the page is open.
 - **Password reset doesn't reveal who has an account.** "Forgot password" gives the same answer for
   any email and sends the email in the background, so response time doesn't leak it either. Only a
   SHA-256 hash of the reset token is stored; links are single-use, expire in 30 minutes, are limited
@@ -225,8 +236,9 @@ Vercel (client), Render (server)
 - Students can't leave a class themselves, and classes can't be renamed yet.
 - Removing a member or deleting a class runs several deletes without a transaction; they're ordered
   so a failure halfway can be retried, but nothing rolls back automatically.
-- Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
-  httpOnly cookies would be safer.
+- An injected script (XSS) can't read the refresh token, but it can still use the logged-in session while the
+  page is open; there is no Content-Security-Policy yet. A token sent in the request body is still accepted by
+  `/api/auth/refresh` so sessions from before the cookie change could move over; that path can be removed later.
 - Browser tests cover five core flows only (see **Testing**); the other screens have been checked by hand.
 - The code judge runs JavaScript only. A V8 isolate is a weaker boundary than a kernel-level sandbox
   (namespaces/seccomp, as in Judge0), and the worker shares the host with the API on Render's single
@@ -279,11 +291,11 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 114 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 118 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, contest ranking (penalties, ties, first solves, the freeze), the AI client (schema checks, retry, timeouts, no retry on 401, the key never logged) and hint rules (code detection, prompt contents, fallbacks), the question generator's validation, feedback rules, and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 23 suites, 335 checks; add suite names to run only those): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 23 suites, 341 checks; add suite names to run only those): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -305,8 +317,8 @@ Server environment variables:
   secrets: email is off and AI goes to the fake AI server).
 - **Load test** (`npm run loadtest`): simulated students in live quizzes and a contest; see **Performance** below.
   It measures, it doesn't pass or fail, and it isn't run automatically.
-- **Browser tests** (`e2e/`, `npx playwright test`, 5 tests, also in CI): Playwright starts its own API and client
-  and drives Chromium through logging in, a student taking a timed test, a live quiz with the teacher and a
+- **Browser tests** (`e2e/`, `npx playwright test`, 6 tests, also in CI): Playwright starts its own API and client
+  and drives Chromium through logging in (and checking that no token is readable by page scripts and that a reload keeps you logged in), a student taking a timed test, a live quiz with the teacher and a
   student in two browsers at once, and coding practice in Monaco judged on submit. The live quiz test found a
   real bug (the last player to answer missed their result), now fixed.
 - Not covered: most UI screens (only those five flows run in a browser; the rest was checked by hand and with

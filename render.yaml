@@ -33,3 +33,7 @@ services:
         sync: false
       - key: AI_MODEL
         value: anthropic/claude-haiku-5.5
+      # Shared with the Vercel middleware (client/middleware.js); the API only believes the client
+      # IP it forwards when this matches. Any long random string, the same in Vercel and Render.
+      - key: PROXY_SECRET
+        sync: false

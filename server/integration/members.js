@@ -37,7 +37,7 @@ const { run, PW, call, check, invite, finish } = require('./helpers')
   const freed = await call('DELETE', `/api/members/${T1.user.id}`, null, A.accessToken)
   check('teacher without classes can be removed', freed.s === 200, freed)
   const t1Login = await call('POST', '/api/auth/login', { email: `t1-${run}@example.com`, password: PW })
-  const t1Refresh = await call('POST', '/api/auth/refresh', { refreshToken: T1.refreshToken })
+  const t1Refresh = await call('POST', '/api/auth/refresh', null, null, { cookie: T1.refreshToken })
   const t1Token = await call('GET', '/api/me', null, T1.accessToken)
   check('removed teacher: login, refresh and old token all fail', t1Login.s === 401 && t1Refresh.s === 401 && t1Token.s === 401, { login: t1Login.s, refresh: t1Refresh.s, me: t1Token.s })
 

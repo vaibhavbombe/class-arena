@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import ThemeToggle from './components/ThemeToggle.jsx'
-import { watchOtherTabs } from './session.js'
+import { isLoggedIn, watchOtherTabs } from './session.js'
 import AcceptInvite from './pages/AcceptInvite.jsx'
 import ClassAnalytics from './pages/ClassAnalytics.jsx'
 import ClassDetail from './pages/ClassDetail.jsx'
@@ -34,7 +34,7 @@ export default function App() {
     <BrowserRouter>
       <PublicThemeToggle />
       <Routes>
-        <Route path="/" element={<Navigate to={localStorage.getItem('accessToken') ? '/dashboard' : '/login'} replace />} />
+        <Route path="/" element={<Navigate to={isLoggedIn() ? '/dashboard' : '/login'} replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/join" element={<StudentSignup />} />

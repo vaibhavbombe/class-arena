@@ -1,13 +1,52 @@
 import axios from 'axios'
+import { clearAuth, getAccessToken, isLoggedIn, setAccessToken } from './auth.js'
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002'
-const api = axios.create({ baseURL: API_URL })
+// Requests that set or use the refresh-token cookie (login, signups, refresh, logout, invite
+// accept). In production they go to this site itself ('' = same origin), which a Vercel
+// rewrite forwards to the API, so the cookie is first-party. In development, localhost:5178
+// and localhost:5002 are the same site, so they can go straight to the API.
+export const AUTH_URL = import.meta.env.VITE_AUTH_URL ?? (import.meta.env.PROD ? '' : API_URL)
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+const api = axios.create({ baseURL: API_URL })
+export const authApi = axios.create({ baseURL: AUTH_URL, withCredentials: true })
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function requestNewAccessToken() {
+  // One-time move for sessions from before the cookie: their refresh token was in localStorage.
+  let legacy = null
+  try { legacy = localStorage.getItem('refreshToken') } catch { /* storage blocked */ }
+  try {
+    const response = await authApi.post('/api/auth/refresh', legacy ? { refreshToken: legacy } : undefined)
+    return response.data.accessToken
+  } catch (error) {
+    if (error.response?.status !== 401 || legacy) throw error
+    // Another tab may have just rotated the shared cookie; the browser has the new one now.
+    await sleep(500)
+    const response = await authApi.post('/api/auth/refresh')
+    return response.data.accessToken
+  } finally {
+    try { localStorage.removeItem('refreshToken'); localStorage.removeItem('accessToken') } catch { /* ignore */ }
   }
+}
+
+// Concurrent callers share one refresh (each refresh token works only once).
+let refreshing = null
+export function refreshAccessToken() {
+  if (!refreshing) {
+    refreshing = requestNewAccessToken()
+      .then((token) => { setAccessToken(token); return token })
+      .finally(() => { refreshing = null })
+  }
+  return refreshing
+}
+
+api.interceptors.request.use(async (config) => {
+  // After a reload the access token is gone from memory: get one before the first request.
+  if (!getAccessToken() && isLoggedIn()) await refreshAccessToken().catch(() => {})
+  const token = getAccessToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
@@ -15,29 +54,16 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-    const refreshToken = localStorage.getItem('refreshToken')
-
-    if (
-      error.response?.status !== 401 ||
-      !originalRequest ||
-      originalRequest._retry ||
-      originalRequest.url?.includes('/api/auth/refresh') ||
-      !refreshToken
-    ) {
+    if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
       return Promise.reject(error)
     }
-
     originalRequest._retry = true
-
     try {
-      const response = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken })
-      localStorage.setItem('accessToken', response.data.accessToken)
-      localStorage.setItem('refreshToken', response.data.refreshToken)
-      originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`
+      const token = await refreshAccessToken()
+      originalRequest.headers.Authorization = `Bearer ${token}`
       return api(originalRequest)
     } catch (refreshError) {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
+      clearAuth()
       window.location.assign('/login')
       return Promise.reject(refreshError)
     }

@@ -16,7 +16,8 @@ const app = express()
 // Measured on Render (Oct 2026): a request arrives with 3 X-Forwarded-For entries (client + 2
 // proxies), so 3 hops are trusted there. Re-check (e.g. with a temporary endpoint) if hosting changes.
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? (process.env.RENDER ? 3 : 0)))
-app.use(cors({ origin: process.env.CLIENT_URL }))
+// credentials: the browser may send the refresh-token cookie (only to /api/auth/*; see lib/authCookie.js).
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }))
 app.use(express.json())
 
 // For Render's health check. No database call, so it stays cheap.
@@ -29,20 +30,6 @@ app.get('/api/health', async (req, res) => res.json({
   ai: aiConfig().enabled ? 'on' : 'off', // hints fall back to fixed text when off
 }))
 
-// TEMPORARY: checks that requests forwarded by the Vercel middleware carry a valid secret and
-// a client IP. Counts and booleans only, never an address. Remove after checking production.
-app.get('/api/auth/_hops', (req, res) => {
-  const { fromTrustedProxy, clientIp } = require('./lib/clientIp')
-  const forwarded = (req.headers['x-forwarded-for'] || '').split(',').map((part) => part.trim()).filter(Boolean)
-  res.json({
-    forwardedEntries: forwarded.length,
-    viaMiddleware: Boolean(req.headers['x-client-ip']),
-    secretConfigured: Boolean(process.env.PROXY_SECRET),
-    secretValid: fromTrustedProxy(req),
-    usesForwardedClientIp: clientIp(req) !== req.ip,
-    clientIpIsFirstForwarded: clientIp(req) === forwarded[0],
-  })
-})
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))

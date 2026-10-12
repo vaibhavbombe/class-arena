@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import api from '../api.js'
+import { authApi } from '../api.js'
 import { errorMessage, saveSession } from '../session.js'
 import { buttonStyle, colors, errorStyle, formStyle, inputStyle, linkStyle, messageStyle, narrowPageStyle, titleStyle } from '../styles.js'
 
@@ -22,7 +22,7 @@ export default function Login() {
     setSubmitting(true)
 
     try {
-      const response = await api.post('/api/auth/login', form)
+      const response = await authApi.post('/api/auth/login', form)
       saveSession(response.data)
       navigate('/dashboard')
     } catch (requestError) {

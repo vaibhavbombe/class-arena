@@ -35,10 +35,24 @@ const { BASE, run, call, check, finish } = require('./helpers')
   const me = await call('GET', '/api/me', null, t.data.accessToken)
   check('/me returns teacher in Alpha Academy', me.data.user.role === 'teacher' && me.data.institution.name === 'Alpha Academy', me)
 
-  const r1 = await call('POST', '/api/auth/refresh', { refreshToken: a.data.refreshToken })
-  check('refresh issues new tokens', r1.status === 200 && r1.data.accessToken && r1.data.refreshToken, r1)
-  const r2 = await call('POST', '/api/auth/refresh', { refreshToken: a.data.refreshToken })
+  // The refresh token travels only in an httpOnly cookie.
+  const attrs = a.cookie?.attributes || []
+  check('the refresh token is set as an HttpOnly, SameSite=Strict cookie scoped to /api/auth', a.refresh && attrs.includes('HttpOnly') && attrs.includes('SameSite=Strict') && attrs.includes('Path=/api/auth'), a.cookie)
+  check('...and is not in the JSON, where page scripts could read it', !('refreshToken' in a.data) && a.data.accessToken, Object.keys(a.data))
+
+  const r1 = await call('POST', '/api/auth/refresh', null, null, { cookie: a.refresh })
+  check('refresh with the cookie issues a new access token and a new cookie', r1.status === 200 && r1.data.accessToken && r1.refresh && r1.refresh !== a.refresh && !('refreshToken' in r1.data), r1)
+  const r2 = await call('POST', '/api/auth/refresh', null, null, { cookie: a.refresh })
   check('old refresh token rejected after rotation', r2.status === 401, r2)
+  check('no cookie at all: 401', (await call('POST', '/api/auth/refresh')).status === 401, null)
+
+  // Sessions from before the cookie change kept the token in localStorage; they can move over once.
+  const legacy = await call('POST', '/api/auth/refresh', { refreshToken: r1.refresh })
+  check('a token sent in the body (old sessions) still works once and moves to a cookie', legacy.status === 200 && legacy.refresh, legacy)
+
+  const out = await call('POST', '/api/auth/logout', null, null, { cookie: legacy.refresh })
+  check('logout clears the cookie', out.status === 200 && out.cookie?.attributes.some((x) => /^Expires=Thu, 01 Jan 1970/.test(x)), out.cookie)
+  check('...and revokes the token on the server', (await call('POST', '/api/auth/refresh', null, null, { cookie: legacy.refresh })).status === 401, null)
 
   const bad = await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{bad' })
   check('malformed JSON -> 400, no stack', bad.status === 400 && !(await bad.text()).includes('at '), bad.status)
