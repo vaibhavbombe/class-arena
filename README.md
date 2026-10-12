@@ -11,6 +11,13 @@ and inside tests (Phase 4), live ICPC-style coding contests (Phase 5), a class a
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
 first request after it has been idle can take ~50 seconds)
 
+**Try it** with the demo institute (password `Demo-Arena1!` for all of these; the data was made with
+`scripts/seed-demo.js` and other visitors can change it):
+- Teacher: `demo-teacher@example.com` (class analytics, question bank, tests, the "Friday Cup" contest, practice problems)
+- Students: `demo-student1@example.com` … `demo-student8@example.com` (take a test, solve problems, join a live quiz)
+
+The demo admin's password isn't shared, because admins can send invite emails.
+
 ## What works today
 - **Institutes as tenants.** Signing up creates an institute and makes you its admin.
 - **Three roles.**
