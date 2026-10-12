@@ -98,6 +98,17 @@ test('AI_MODEL can list fallback models; the request carries them and the answer
   assert.equal('models' in JSON.parse(single.calls[0].init.body), false) // one model: no list sent
 })
 
+test('a level 1 hint must be a question; later levels may state things', () => {
+  const statement = { hint: 'Add a starting value of zero to your reduce call.', focus: 'bug' }
+  const question = { hint: 'What does your function return when the list is empty?', focus: 'edge-cases' }
+  assert.match(hints.validateHint(statement, 'sum', 1), /must be a question/)
+  assert.equal(hints.validateHint(question, 'sum', 1), null)
+  assert.equal(hints.validateHint(statement, 'sum', 2), null)
+  const [system] = hints.buildHintMessages({ problem: { title: 'Sum', prompt: 'p', functionName: 'sum', sampleTests: [] }, level: 1, code: '' })
+  assert.match(system.content, /ONE guiding question/)
+  assert.match(system.content, /do not name a fix/)
+})
+
 test('looksLikeSolution catches code but allows plain-English hints', () => {
   for (const code of [
     '```js\nreturn 1\n```', 'Try `let total = 0;` first', 'function sum(nums) { }', 'Use nums.reduce((a, b) => a + b, 0)',

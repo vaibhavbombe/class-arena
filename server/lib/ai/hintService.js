@@ -51,7 +51,7 @@ async function nextHint({ problem, student, code }) {
   if (!overBudget) {
     result = await chatJSON({
       messages: hints.buildHintMessages(context),
-      validate: (data) => hints.validateHint(data, problem.code.functionName),
+      validate: (data) => hints.validateHint(data, problem.code.functionName, level),
       maxTokens: 300,
     })
   }

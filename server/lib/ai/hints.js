@@ -17,8 +17,8 @@ const HINT_SCHEMA = {
   },
 }
 const LEVEL_GUIDE = {
-  1: 'Level 1 (nudge): point the student at what to think about or what to re-read. Do not describe an algorithm.',
-  2: 'Level 2 (approach): explain the key idea or approach in one or two sentences of plain English.',
+  1: 'Level 1 (nudge): ask the student ONE guiding question about how their code behaves, for example what it does for a particular input. Do not say what is wrong, do not name a fix, a method, a parameter or what to add or remove. One or two sentences, ending with a question.',
+  2: 'Level 2 (approach): explain the key idea or approach in one or two sentences of plain English. You may name the concept involved, but do not spell out the exact change to make.',
   3: 'Level 3 (plan): give a short numbered plan of steps in plain English. Still no code, no code syntax, no variable declarations.',
 }
 
@@ -35,10 +35,13 @@ function looksLikeSolution(text, functionName) {
   return codeLines >= 2
 }
 
-function validateHint(data, functionName) {
+// level: a level-1 hint has to be a question (a nudge), not a statement of the fix. A crude
+// check, but one the server can enforce; a hint that fails it is retried, then replaced.
+function validateHint(data, functionName, level) {
   const error = check(HINT_SCHEMA, data)
   if (error) return error
   if (looksLikeSolution(data.hint, functionName)) return 'hint contains code'
+  if (level === 1 && !data.hint.includes('?')) return 'a level 1 hint must be a question'
   return null
 }
 
