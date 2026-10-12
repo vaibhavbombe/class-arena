@@ -1,0 +1,72 @@
+# Runs on every push and pull request. No secrets are needed: MongoDB and Redis are throwaway
+# service containers, email is switched off, and AI calls go to the fake AI server that the
+# integration runner starts (integration/mockAi.js).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server (unit + integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mongo:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # The integration runner refuses databases whose names don't end in -dev or -test.
+      MONGODB_URI: mongodb://localhost:27017/class-arena-test
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-only-value-not-used-anywhere-else
+      CLIENT_URL: http://localhost:5178
+      EMAIL_DISABLED: 'true'
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: Integration tests
+        run: npm run test:integration
+
+  client:
+    name: Client build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_API_URL: http://localhost:5002
