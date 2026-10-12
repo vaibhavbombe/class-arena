@@ -9,15 +9,29 @@ const run = `${Date.now()}${Math.floor(Math.random() * 1000)}`
 const PW = 'Passw0rd!x'
 let failures = 0
 
-// Returns the response both as { s, d } and { status, data }.
-async function call(method, urlPath, body, token) {
+// The refresh-token cookie from a response, as the browser would store it ({ value, attributes }).
+function refreshCookie(res) {
+  const raw = res.headers.getSetCookie().find((c) => c.startsWith('ca_rt='))
+  if (!raw) return null
+  const [pair, ...attributes] = raw.split(';').map((part) => part.trim())
+  return { value: decodeURIComponent(pair.slice('ca_rt='.length)), attributes }
+}
+
+// Returns the response both as { s, d } and { status, data }, plus `refresh`: the refresh
+// token from the Set-Cookie header (null if none). `cookie` sends a refresh token as a cookie.
+async function call(method, urlPath, body, token, { cookie } = {}) {
   const res = await fetch(BASE + urlPath, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(cookie && { Cookie: `ca_rt=${encodeURIComponent(cookie)}` }),
+    },
     body: body && JSON.stringify(body),
   })
   const data = await res.json()
-  return { s: res.status, d: data, status: res.status, data }
+  const set = refreshCookie(res)
+  return { s: res.status, d: data, status: res.status, data, refresh: set?.value || null, cookie: set }
 }
 
 function check(label, ok, detail) {
@@ -29,7 +43,8 @@ function check(label, ok, detail) {
 async function invite(adminToken, prefix, role = 'teacher') {
   const inv = await call('POST', '/api/invites', { email: `${prefix}${run}@example.com`, role }, adminToken)
   const token = new URL(inv.d.inviteUrl).searchParams.get('token')
-  return (await call('POST', '/api/invites/accept', { token, name: prefix, password: PW })).d
+  const accepted = await call('POST', '/api/invites/accept', { token, name: prefix, password: PW })
+  return { ...accepted.d, refreshToken: accepted.refresh } // the cookie's token, for suites that test refresh
 }
 
 // Some suites read or adjust the database directly (e.g. move a deadline into the past).

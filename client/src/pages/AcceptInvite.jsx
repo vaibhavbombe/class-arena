@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import api from '../api.js'
+import { authApi } from '../api.js'
 import { errorMessage, isLoggedIn, saveSession } from '../session.js'
 import PasswordChecklist from '../components/PasswordChecklist.jsx'
 import { passwordIsValid } from '../passwordRules.js'
@@ -30,7 +30,7 @@ export default function AcceptInvite() {
     setSubmitting(true)
 
     try {
-      const response = await api.post('/api/invites/accept', { token, ...form })
+      const response = await authApi.post('/api/invites/accept', { token, ...form })
       saveSession(response.data)
       navigate('/dashboard')
     } catch (requestError) {

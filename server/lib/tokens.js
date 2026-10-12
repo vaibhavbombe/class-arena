@@ -1,6 +1,7 @@
 const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const RefreshToken = require('../models/RefreshToken')
+const { setRefreshCookie } = require('./authCookie')
 
 // The tenant (institutionId) and role travel in the signed token, so the server
 // never has to trust a tenant id sent in the body, query or URL.
@@ -26,13 +27,11 @@ function publicUser(user) {
   return { id: user._id, email: user.email, name: user.name, role: user.role, institutionId: user.institutionId }
 }
 
-// Shape returned by every endpoint that logs someone in.
-async function authResponse(user) {
-  return {
-    accessToken: signAccessToken(user),
-    refreshToken: await issueRefreshToken(user._id),
-    user: publicUser(user),
-  }
+// Every endpoint that logs someone in: the refresh token goes into the httpOnly cookie (never
+// the JSON, or a script could read it there), and the short-lived access token is returned.
+async function authResponse(user, res) {
+  setRefreshCookie(res, await issueRefreshToken(user._id))
+  return { accessToken: signAccessToken(user), user: publicUser(user) }
 }
 
 module.exports = { signAccessToken, issueRefreshToken, publicUser, authResponse }

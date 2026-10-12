@@ -46,7 +46,7 @@ const hash = (token) => crypto.createHash('sha256').update(token).digest('hex')
   const oldLogin = await call('POST', '/api/auth/login', { email, password: 'OldPassw0rd!' })
   const newLogin = await call('POST', '/api/auth/login', { email, password: 'NewPassw0rd!' })
   check('old password fails, new password works', oldLogin.s === 401 && newLogin.s === 200, { oldLogin: oldLogin.s, newLogin: newLogin.s })
-  const oldSession = await call('POST', '/api/auth/refresh', { refreshToken: signup.d.refreshToken })
+  const oldSession = await call('POST', '/api/auth/refresh', null, null, { cookie: signup.refresh })
   check('sessions from before the reset are signed out', oldSession.s === 401, oldSession)
 
   const expiredToken = crypto.randomBytes(32).toString('hex')
