@@ -30,20 +30,6 @@ app.get('/api/health', async (req, res) => res.json({
   ai: aiConfig().enabled ? 'on' : 'off', // hints fall back to fixed text when off
 }))
 
-// TEMPORARY: checks that requests forwarded by the Vercel middleware carry a valid secret and
-// a client IP. Counts and booleans only, never an address. Remove after checking production.
-app.get('/api/auth/_hops', (req, res) => {
-  const { fromTrustedProxy, clientIp } = require('./lib/clientIp')
-  const forwarded = (req.headers['x-forwarded-for'] || '').split(',').map((part) => part.trim()).filter(Boolean)
-  res.json({
-    forwardedEntries: forwarded.length,
-    viaMiddleware: Boolean(req.headers['x-client-ip']),
-    secretConfigured: Boolean(process.env.PROXY_SECRET),
-    secretValid: fromTrustedProxy(req),
-    usesForwardedClientIp: clientIp(req) !== req.ip,
-    clientIpIsFirstForwarded: clientIp(req) === forwarded[0],
-  })
-})
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))
