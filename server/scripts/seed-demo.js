@@ -11,20 +11,33 @@
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=')
 const API = (arg('api') || 'http://localhost:5002').replace(/\/$/, '')
 const PASSWORD = arg('password') || process.env.DEMO_PASSWORD
+// The admin can send invite emails, so it never shares the public demo password: unless one is
+// given, it gets a long random password that isn't printed or stored (the account just sits unused).
+const ADMIN_PASSWORD = arg('admin-password') || `Aa1!${require('crypto').randomBytes(24).toString('base64url')}`
 // --tag=x makes the emails demo-teacher+x@example.com etc., so the script can run again.
 const TAG = arg('tag')
 const email = (local) => (TAG ? `${local}+${TAG}@example.com` : `${local}@example.com`)
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// Errors made by the hosting edge (Render behind Cloudflare), not by the app. Seeding production
+// once hit a one-off 520; the same request then worked. These are retried a few times.
+const EDGE_ERRORS = new Set([502, 503, 504, 520, 522, 524])
+
 async function call(method, path, body, token) {
-  const response = await fetch(API + path, {
-    method,
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  const data = await response.json().catch(() => null)
-  if (!response.ok) throw new Error(`${method} ${path} -> ${response.status} ${data?.error || ''}`)
-  return data
+  for (let attempt = 1; ; attempt++) {
+    const response = await fetch(API + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+    const data = await response.json().catch(() => null)
+    if (response.ok) return data
+    if (EDGE_ERRORS.has(response.status) && attempt < 4) {
+      await sleep(2000 * attempt)
+      continue
+    }
+    throw new Error(`${method} ${path} -> ${response.status} ${data?.error || ''}`)
+  }
 }
 
 const STUDENTS = ['Aisha Khan', 'Ben Carter', 'Chen Wei', 'Diya Sharma', 'Ethan Brooks', 'Fatima Noor', 'Gabriel Silva', 'Hana Sato']
@@ -53,7 +66,7 @@ const tests = (pairs) => pairs.map(([input, expected]) => ({ input, expected }))
   if (!local && !process.argv.includes('--production')) throw new Error(`${API} is not local. Add --production if you really mean to seed it.`)
 
   console.log(`Seeding demo data into ${API} ...`)
-  const admin = await call('POST', '/api/auth/signup', { institutionName: 'ClassArena Demo Academy', name: 'Demo Admin', email: email('demo-admin'), password: PASSWORD })
+  const admin = await call('POST', '/api/auth/signup', { institutionName: 'ClassArena Demo Academy', name: 'Demo Admin', email: email('demo-admin'), password: ADMIN_PASSWORD })
   const invite = await call('POST', '/api/invites', { email: email('demo-teacher'), role: 'teacher' }, admin.accessToken)
   const token = new URL(invite.inviteUrl).searchParams.get('token')
   const teacher = await call('POST', '/api/invites/accept', { token, name: 'Tara Teacher', password: PASSWORD })
@@ -126,7 +139,7 @@ const tests = (pairs) => pairs.map(([input, expected]) => ({ input, expected }))
   console.log('Done.')
   console.log(`  Teacher:  ${email('demo-teacher')}`)
   console.log(`  Students: ${email('demo-student1')} ... ${email(`demo-student${STUDENTS.length}`)}`)
-  console.log(`  Admin:    ${email('demo-admin')} (can send invite emails: keep this one private)`)
+  console.log(`  Admin:    ${email('demo-admin')} (random password, not printed; it can send invite emails, so it isn't shared)`)
 })().catch((err) => {
   console.error(`Seeding failed: ${err.message}`)
   process.exit(1)
