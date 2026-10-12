@@ -1,5 +1,31 @@
-// Setup through the API (fast, and not what these tests are about), plus a UI login helper.
-const { expect } = require('@playwright/test')
+// Setup through the API (fast, and not what these tests are about), a UI login helper, and a
+// check that the browser reported no Content-Security-Policy violations.
+const base = require('@playwright/test')
+const { expect } = base
+
+// Collects CSP violations the browser reports on this page (Chromium logs them as console errors).
+function watchCsp(page) {
+  const violations = []
+  page.on('console', (message) => {
+    const text = message.text()
+    // The code-runner worker's own policy blocks all requests on purpose (connect-src 'none');
+    // the page's policy never contains that, so these reports are expected, not regressions.
+    if (text.includes("connect-src 'none'")) return
+    if (message.type() === 'error' && /Content Security Policy|Refused to (load|execute|connect|apply|create)/i.test(text)) {
+      violations.push(text.slice(0, 300))
+    }
+  })
+  return violations
+}
+
+// Every test's default page is watched; a violation fails the test.
+const test = base.test.extend({
+  page: async ({ page }, use) => {
+    const violations = watchCsp(page)
+    await use(page)
+    expect(violations, 'Content-Security-Policy violations').toEqual([])
+  },
+})
 
 const PW = 'Passw0rd!x'
 const run = () => `${Date.now()}${Math.floor(Math.random() * 1000)}`
@@ -38,4 +64,4 @@ async function login(page, email) {
   await expect(page).toHaveURL(/\/dashboard/)
 }
 
-module.exports = { PW, call, setupClass, login }
+module.exports = { test, expect, PW, call, setupClass, login, watchCsp }

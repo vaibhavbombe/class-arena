@@ -234,6 +234,18 @@ Vercel (client), Render (server)
   IP Vercel saw plus a secret shared with the API (`PROXY_SECRET`); the API believes that IP only when the
   secret matches (constant-time compare), so calling the API directly with made-up headers doesn't work.
   What it doesn't stop: a script injected into the page can still make requests while the page is open.
+- **A Content-Security-Policy limits what the page can run and where it can connect**
+  (`client/vercel.json`). Scripts may come only from the site itself and from the exact Monaco version on the
+  CDN (`cdn.jsdelivr.net/npm/monaco-editor@0.55.1/`, not the whole CDN, which serves every npm package); there
+  are no inline scripts (the theme-before-first-paint snippet is a file) and no `eval` on the page; connections
+  go only to the site, the API and its WebSocket; no framing, plugins or foreign form targets. Styles still
+  allow `'unsafe-inline'` because React style attributes need it.
+- **Code run in the browser can't reach the network.** "Run" executes code with `new Function` in a Web
+  Worker, so that worker needs `'unsafe-eval'`, and a teacher can run a student's code. Without care that
+  worker could call `/api/auth/refresh` with the teacher's cookie and send the new token away. The worker file
+  gets its own, stricter policy (`default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'`),
+  so it can evaluate code but can't make any request. A browser test checks this: student code that tries the
+  refresh endpoint is blocked, and with that policy loosened the same test fails.
 - **Password reset doesn't reveal who has an account.** "Forgot password" gives the same answer for
   any email and sends the email in the background, so response time doesn't leak it either. Only a
   SHA-256 hash of the reset token is stored; links are single-use, expire in 30 minutes, are limited
@@ -248,7 +260,10 @@ Vercel (client), Render (server)
 - Removing a member or deleting a class runs several deletes without a transaction; they're ordered
   so a failure halfway can be retried, but nothing rolls back automatically.
 - An injected script (XSS) can't read the refresh token, but it can still use the logged-in session while the
-  page is open; there is no Content-Security-Policy yet. A token sent in the request body is still accepted by
+  page is open (the Content-Security-Policy makes injecting and exfiltrating harder, not impossible: styles
+  still allow inline). The Monaco version is pinned in the CSP, so upgrading the editor means updating
+  `client/vercel.json` (the browser tests fail on any CSP violation, so a mismatch is caught). A token sent in
+  the request body is still accepted by
   `/api/auth/refresh` so sessions from before the cookie change could move over; that path can be removed later.
 - Browser tests cover five core flows only (see **Testing**); the other screens have been checked by hand.
 - The code judge runs JavaScript only. A V8 isolate is a weaker boundary than a kernel-level sandbox
@@ -302,11 +317,11 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
-- **Unit tests** (`npm test`, 118 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 119 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, contest ranking (penalties, ties, first solves, the freeze), the AI client (schema checks, retry, timeouts, no retry on 401, the key never logged) and hint rules (code detection, prompt contents, fallbacks), the question generator's validation, feedback rules, and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 23 suites, 341 checks; add suite names to run only those): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 23 suites, 342 checks; add suite names to run only those): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -328,9 +343,11 @@ Server environment variables:
   secrets: email is off and AI goes to the fake AI server).
 - **Load test** (`npm run loadtest`): simulated students in live quizzes and a contest; see **Performance** below.
   It measures, it doesn't pass or fail, and it isn't run automatically.
-- **Browser tests** (`e2e/`, `npx playwright test`, 6 tests, also in CI): Playwright starts its own API and client
+- **Browser tests** (`e2e/`, `npx playwright test`, 7 tests, also in CI): Playwright starts its own API and serves the
+  client's **production build with the same headers as Vercel** (CSP included; any CSP violation fails a test)
   and drives Chromium through logging in (and checking that no token is readable by page scripts and that a reload keeps you logged in), a student taking a timed test, a live quiz with the teacher and a
-  student in two browsers at once, and coding practice in Monaco judged on submit. The live quiz test found a
+  student in two browsers at once, coding practice in Monaco judged on submit, and that code run in the browser
+  can't make network requests. The live quiz test found a
   real bug (the last player to answer missed their result), now fixed.
 - Not covered: most UI screens (only those five flows run in a browser; the rest was checked by hand and with
   screenshots), performance of the hosted deployment, and email delivery itself.

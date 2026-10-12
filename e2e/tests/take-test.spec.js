@@ -1,5 +1,4 @@
-const { test, expect } = require('@playwright/test')
-const { call, setupClass, login } = require('./helpers')
+const { test, expect, call, setupClass, login } = require('./helpers')
 
 test('a student starts a timed test, answers in the browser and submits; the server grades it', async ({ page }) => {
   const { admin, cls, students } = await setupClass()

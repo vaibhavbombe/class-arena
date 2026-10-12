@@ -54,6 +54,9 @@ const { BASE, run, call, check, finish } = require('./helpers')
   check('logout clears the cookie', out.status === 200 && out.cookie?.attributes.some((x) => /^Expires=Thu, 01 Jan 1970/.test(x)), out.cookie)
   check('...and revokes the token on the server', (await call('POST', '/api/auth/refresh', null, null, { cookie: legacy.refresh })).status === 401, null)
 
+  const health = await fetch(BASE + '/api/health')
+  check('API responses carry security headers and no X-Powered-By', health.headers.get('content-security-policy') === "default-src 'none'; frame-ancestors 'none'" && health.headers.get('x-content-type-options') === 'nosniff' && !health.headers.get('x-powered-by'), Object.fromEntries(health.headers))
+
   const bad = await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{bad' })
   check('malformed JSON -> 400, no stack', bad.status === 400 && !(await bad.text()).includes('at '), bad.status)
 

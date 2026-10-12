@@ -16,6 +16,18 @@ const app = express()
 // Measured on Render (Oct 2026): a request arrives with 3 X-Forwarded-For entries (client + 2
 // proxies), so 3 hops are trusted there. Re-check (e.g. with a temporary endpoint) if hosting changes.
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? (process.env.RENDER ? 3 : 0)))
+// The API only ever answers with JSON, so nothing it returns should be rendered, framed or
+// sniffed as another type. (The client's own policy is in client/vercel.json.)
+app.disable('x-powered-by')
+app.use((req, res, next) => {
+  res.set({
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+  })
+  next()
+})
 // credentials: the browser may send the refresh-token cookie (only to /api/auth/*; see lib/authCookie.js).
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }))
 app.use(express.json())
