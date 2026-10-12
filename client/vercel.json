@@ -1,3 +1,7 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/auth/:path*", "destination": "https://class-arena-server.onrender.com/api/auth/:path*" },
+    { "source": "/api/invites/accept", "destination": "https://class-arena-server.onrender.com/api/invites/accept" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

@@ -29,6 +29,20 @@ app.get('/api/health', async (req, res) => res.json({
   ai: aiConfig().enabled ? 'on' : 'off', // hints fall back to fixed text when off
 }))
 
+// TEMPORARY: compares direct requests with ones proxied by Vercel, to set the trusted proxy
+// hops. Counts and booleans only, never an address. Remove after measuring.
+app.get('/api/auth/_hops', (req, res) => {
+  const forwarded = (req.headers['x-forwarded-for'] || '').split(',').map((part) => part.trim()).filter(Boolean)
+  const vercel = (req.headers['x-vercel-forwarded-for'] || '').split(',').map((part) => part.trim()).filter(Boolean)
+  res.json({
+    forwardedEntries: forwarded.length,
+    trustedHops: app.get('trust proxy'),
+    ipIsEntry: forwarded.indexOf(req.ip),
+    hasVercelHeader: vercel.length > 0,
+    vercelHeaderIsEntry: vercel.length ? forwarded.indexOf(vercel[0]) : null,
+    hasVercelId: Boolean(req.headers['x-vercel-id']),
+  })
+})
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))
