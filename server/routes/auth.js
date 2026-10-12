@@ -14,6 +14,7 @@ const { normalizeJoinCode } = require('../lib/joinCode')
 const { sendMail } = require('../lib/mailer')
 const { limitRequests, blockedBy, recordFailure, clear, tooMany } = require('../lib/rateLimit')
 const LIMITS = require('../lib/limits')
+const { clientIp } = require('../lib/clientIp')
 
 const router = express.Router()
 const SALT_ROUNDS = 10
@@ -60,7 +61,7 @@ router.post('/student-signup', limitRequests(LIMITS.studentSignup.perIp), async 
   const { email, password, name } = req.body
 
   // Join codes are short, so wrong guesses from one IP are limited.
-  const wrongCodes = [{ ...LIMITS.studentSignup.wrongCodesPerIp, id: req.ip }]
+  const wrongCodes = [{ ...LIMITS.studentSignup.wrongCodesPerIp, id: clientIp(req) }]
   const wait = await blockedBy(wrongCodes)
   if (wait) return tooMany(res, wait, 'Too many wrong class codes.')
   const joinCode = normalizeJoinCode(req.body.joinCode)
@@ -94,7 +95,7 @@ router.post('/login', limitRequests(LIMITS.login.perIp), async (req, res) => {
   // Checked before bcrypt, so a blocked guesser can't keep the server busy either. The same
   // rules apply whether or not the account exists, so this doesn't reveal which emails do.
   const failures = [
-    { ...LIMITS.login.failuresPerAccountAndIp, id: `${email}|${req.ip}` },
+    { ...LIMITS.login.failuresPerAccountAndIp, id: `${email}|${clientIp(req)}` },
     { ...LIMITS.login.failuresPerAccount, id: email },
   ]
   const wait = await blockedBy(failures)
