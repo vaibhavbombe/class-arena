@@ -189,8 +189,11 @@ Vercel (client), Render (server)
   update before the AI call, so two clicks never pay twice; a claim that never finished can be retaken
   after 90 seconds.
   Each hint is saved once (a unique index on problem, student and level), so reloading or double-clicking
-  never pays twice. The hard cap is the credit limit set on the OpenRouter key itself. The default model
-  is `anthropic/claude-haiku-5.5`, chosen for price; `AI_MODEL` changes it.
+  never pays twice. The hard cap is the credit limit set on the OpenRouter key itself. The code's default
+  model is `anthropic/claude-haiku-5.5` (chosen for price); `AI_MODEL` changes it. The live demo uses a free
+  OpenRouter model (`google/gemma-4-31b-it:free`, set in `render.yaml`): it costs nothing but is rate-limited,
+  some free providers may log prompts (which include students' code), and when it fails or answers badly the
+  student gets the standard hint or feedback instead.
 - **Student code never runs in the API process.** The API puts a job on a Redis queue; a separate judge
   worker process (restarted automatically, killed by a 30 s watchdog if a job hangs) runs it in a fresh
   V8 isolate via `isolated-vm`: no Node APIs (no require, files, network, process or timers), a memory
