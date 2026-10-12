@@ -1,5 +1,7 @@
 # ClassArena
 
+[![CI](https://github.com/vaibhavbombe/class-arena/actions/workflows/ci.yml/badge.svg)](https://github.com/vaibhavbombe/class-arena/actions/workflows/ci.yml)
+
 A multi-tenant classroom and competition platform for institutes. **Work in progress:** built so far
 are accounts and classes (Phase 1), a question bank with timed, auto-graded tests (Phase 2),
 Kahoot-style live quiz battles (Phase 3), JavaScript coding questions judged in a sandbox, for practice
@@ -298,6 +300,9 @@ Server environment variables:
   counters: failed logins, unknown emails treated the same, reset on success, spoofed X-Forwarded-For ignored,
   wrong class codes and game PINs, signups per IP). The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
+- **CI** (`.github/workflows/ci.yml`): every push and pull request runs the unit tests, the full integration
+  suite and the client build on GitHub Actions, with MongoDB and Redis as throwaway service containers (no
+  secrets: email is off and AI goes to the fake AI server).
 - **Load test** (`npm run loadtest`): simulated students in live quizzes and a contest; see **Performance** below.
   It measures, it doesn't pass or fail, and it isn't run automatically.
 - Not covered: the React UI (checked by hand and with screenshots), performance of the hosted deployment, and email
