@@ -227,7 +227,7 @@ Vercel (client), Render (server)
   so a failure halfway can be retried, but nothing rolls back automatically.
 - Tokens live in `localStorage`, which is readable by any script running on the page (XSS risk);
   httpOnly cookies would be safer.
-- There are no browser (end-to-end UI) tests; the UI has only been checked by hand.
+- Browser tests cover five core flows only (see **Testing**); the other screens have been checked by hand.
 - The code judge runs JavaScript only. A V8 isolate is a weaker boundary than a kernel-level sandbox
   (namespaces/seccomp, as in Judge0), and the worker shares the host with the API on Render's single
   free instance; a dedicated judge host with a kernel sandbox would be the next step for untrusted
@@ -305,8 +305,12 @@ Server environment variables:
   secrets: email is off and AI goes to the fake AI server).
 - **Load test** (`npm run loadtest`): simulated students in live quizzes and a contest; see **Performance** below.
   It measures, it doesn't pass or fail, and it isn't run automatically.
-- Not covered: the React UI (checked by hand and with screenshots), performance of the hosted deployment, and email
-  delivery itself.
+- **Browser tests** (`e2e/`, `npx playwright test`, 5 tests, also in CI): Playwright starts its own API and client
+  and drives Chromium through logging in, a student taking a timed test, a live quiz with the teacher and a
+  student in two browsers at once, and coding practice in Monaco judged on submit. The live quiz test found a
+  real bug (the last player to answer missed their result), now fixed.
+- Not covered: most UI screens (only those five flows run in a browser; the rest was checked by hand and with
+  screenshots), performance of the hosted deployment, and email delivery itself.
 
 ## Performance (measured)
 

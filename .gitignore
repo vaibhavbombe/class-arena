@@ -2,5 +2,8 @@ node_modules
 .env
 dist
 .vite
+# Playwright output (screenshots, traces, HTML report)
+e2e/test-results
+e2e/playwright-report
 # stray clone of saas-starter, safe to delete by hand
 saas-starter/

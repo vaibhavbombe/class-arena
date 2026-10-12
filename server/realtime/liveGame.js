@@ -328,7 +328,11 @@ function registerLiveGame(socket) {
     // Close early once everyone has answered; the teacher's live chart is updated in batches.
     const playerCount = await store.playerCount(id)
     queueProgress(game, index)
-    if (result.count >= playerCount) await closeQuestion(game, index)
+    // Reply to this answer first, then close: closing broadcasts the reveal, and the last player
+    // should get "answer received" before the reveal, not after it.
+    if (result.count >= playerCount) {
+      setImmediate(() => closeQuestion(game, index).catch((err) => console.error('Closing a question failed:', err)))
+    }
     // Correctness and points stay hidden until the reveal.
     return { ok: true }
   }))

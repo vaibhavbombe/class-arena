@@ -92,12 +92,15 @@ export default function PlayGame() {
     setSending(true)
     const response = await emitAck(socketRef.current, 'player:answer', { gameId, index: question.index, optionIds })
     setSending(false)
+    // The reveal can arrive before this reply (e.g. when the last answer closes the question),
+    // so only move from "question" to "answered", never back from the reveal.
+    const toAnswered = () => setPhase((current) => (current === 'question' ? 'answered' : current))
     if (response.ok) {
       setPicked(optionIds)
-      setPhase('answered')
+      toAnswered()
     } else {
       setError(response.error)
-      if (response.error === 'You already answered') setPhase('answered')
+      if (response.error === 'You already answered') toAnswered()
     }
   }
 
