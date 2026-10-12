@@ -28,11 +28,14 @@ services:
       # The Vercel URL, no trailing slash. Used for CORS and invite links.
       - key: CLIENT_URL
         sync: false
-      # AI hints. Create the key in OpenRouter with a credit limit (the hard spending cap).
+      # AI hints, feedback and question drafts. The key is free to create on OpenRouter.
       - key: OPENROUTER_API_KEY
         sync: false
+      # A free model (rate-limited; some free providers may log prompts). Bad or missing answers
+      # fall back to standard hints/feedback. For a paid model use e.g. anthropic/claude-haiku-5.5
+      # and set a credit limit on the key (the hard spending cap).
       - key: AI_MODEL
-        value: anthropic/claude-haiku-5.5
+        value: google/gemma-4-31b-it:free
       # Shared with the Vercel middleware (client/middleware.js); the API only believes the client
       # IP it forwards when this matches. Any long random string, the same in Vercel and Render.
       - key: PROXY_SECRET
