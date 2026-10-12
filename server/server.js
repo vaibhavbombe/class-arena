@@ -29,18 +29,18 @@ app.get('/api/health', async (req, res) => res.json({
   ai: aiConfig().enabled ? 'on' : 'off', // hints fall back to fixed text when off
 }))
 
-// TEMPORARY: compares direct requests with ones proxied by Vercel, to set the trusted proxy
-// hops. Counts and booleans only, never an address. Remove after measuring.
+// TEMPORARY: checks that requests forwarded by the Vercel middleware carry a valid secret and
+// a client IP. Counts and booleans only, never an address. Remove after checking production.
 app.get('/api/auth/_hops', (req, res) => {
+  const { fromTrustedProxy, clientIp } = require('./lib/clientIp')
   const forwarded = (req.headers['x-forwarded-for'] || '').split(',').map((part) => part.trim()).filter(Boolean)
-  const vercel = (req.headers['x-vercel-forwarded-for'] || '').split(',').map((part) => part.trim()).filter(Boolean)
   res.json({
     forwardedEntries: forwarded.length,
-    trustedHops: app.get('trust proxy'),
-    ipIsEntry: forwarded.indexOf(req.ip),
-    hasVercelHeader: vercel.length > 0,
-    vercelHeaderIsEntry: vercel.length ? forwarded.indexOf(vercel[0]) : null,
-    hasVercelId: Boolean(req.headers['x-vercel-id']),
+    viaMiddleware: Boolean(req.headers['x-client-ip']),
+    secretConfigured: Boolean(process.env.PROXY_SECRET),
+    secretValid: fromTrustedProxy(req),
+    usesForwardedClientIp: clientIp(req) !== req.ip,
+    clientIpIsFirstForwarded: clientIp(req) === forwarded[0],
   })
 })
 app.use('/api/auth', require('./routes/auth'))
