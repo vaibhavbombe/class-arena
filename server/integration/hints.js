@@ -15,7 +15,7 @@ const aiRequests = async () => (await fetch(`${process.env.AI_MOCK_URL}/requests
   const T = await invite(A.accessToken, 'hn-t-')
   const cls = (await call('POST', '/api/classes', { name: 'JS' }, T.accessToken)).d
   const student = async (name) => (await call('POST', '/api/auth/student-signup', { name, email: `hn-${name.toLowerCase()}${run}@example.com`, password: PW, joinCode: cls.joinCode })).d
-  const [ann, bob, cat, dev, eve] = [await student('Ann'), await student('Bob'), await student('Cat'), await student('Dev'), await student('Eve')]
+  const [ann, bob, cat, dev, eve, fay] = [await student('Ann'), await student('Bob'), await student('Cat'), await student('Dev'), await student('Eve'), await student('Fay')]
   const otherAdmin = (await call('POST', '/api/auth/signup', { institutionName: 'Elsewhere', name: 'Other', email: `hn-o${run}@example.com`, password: PW })).d
   const otherClass = (await call('POST', '/api/classes', { name: 'Elsewhere JS' }, otherAdmin.accessToken)).d
   const other = (await call('POST', '/api/auth/student-signup', { name: 'Olu', email: `hn-olu${run}@example.com`, password: PW, joinCode: otherClass.joinCode })).d
@@ -31,6 +31,7 @@ const aiRequests = async () => (await fetch(`${process.env.AI_MOCK_URL}/requests
   const flaky = await problem('Flaky total MOCK_FLAKY\nReturn the sum of nums.')
   const coder = await problem('Code-happy total MOCK_CODE\nReturn the sum of nums.')
   const down = await problem('Down total MOCK_DOWN\nReturn the sum of nums.')
+  const teller = await problem('Telling total MOCK_STATEMENT\nReturn the sum of nums.')
   const hint = (S, p, code) => call('POST', `/api/problems/${p.id}/hints`, code === undefined ? {} : { code }, S.accessToken)
 
   // Ann submits wrong code first, so the hint can use her verdict.
@@ -64,6 +65,8 @@ const aiRequests = async () => (await fetch(`${process.env.AI_MOCK_URL}/requests
   check('hints that contain code are rejected; a fixed fallback is given instead', fallback.s === 201 && fallback.d.source === 'fallback' && !/function|=>|\{/.test(fallback.d.text), fallback.d)
   const outage = await hint(dev, down)
   check('if the AI is down the student still gets a fallback hint', outage.s === 201 && outage.d.source === 'fallback' && /total\(\[1,2\]\) should give 3/.test(outage.d.text), outage.d)
+  const told = await hint(fay, teller)
+  check('a level 1 hint that states the fix instead of asking is replaced by the standard nudge', told.s === 201 && told.d.source === 'fallback' && told.d.text.includes('?'), told.d)
 
   const [x, y] = await Promise.all([hint(eve, plain), hint(eve, plain)])
   check('a double click gives one hint, not two', [x.s, y.s].sort().join() === '201,429' && (await Hint.countDocuments({ studentId: eve.user.id })) === 1, [x.s, y.s])

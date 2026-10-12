@@ -1,7 +1,8 @@
 // A fake OpenRouter (OpenAI-compatible) server for the integration tests, so AI features are
 // tested end to end without a real key or any cost. What it answers depends on a marker in the
 // request: MOCK_FLAKY (garbage once, then a good answer), MOCK_CODE (hint with code), MOCK_DOWN (500),
-// MOCK_BAD (generated MCQs with two right answers), MOCK_WRONGREF (code whose solution fails a test).
+// MOCK_BAD (generated MCQs with two right answers), MOCK_WRONGREF (code whose solution fails a test),
+// MOCK_STATEMENT (hints that state the fix instead of asking a question).
 // GET /requests lists what the API sent, so tests can check nothing secret reaches the AI.
 const http = require('http')
 
@@ -64,7 +65,7 @@ function startMockAi(port) {
         }))
       }
       if (marker === 'MOCK_CODE') return reply(JSON.stringify({ hint: 'Here you go: function solve(nums) { return nums.length }', focus: 'approach' }))
-      return reply('```json\n' + JSON.stringify({ hint: `Mock hint at level ${level}: think about what happens with an empty list.`, focus: 'edge-cases' }) + '\n```')
+      return reply('```json\n' + JSON.stringify({ hint: marker === 'MOCK_STATEMENT' ? `Mock hint at level ${level}: add a starting value of zero.` : `Mock hint at level ${level}: what happens with an empty list?`, focus: 'edge-cases' }) + '\n```')
     })
   })
   return new Promise((resolve) => server.listen(port, () => resolve(server)))
