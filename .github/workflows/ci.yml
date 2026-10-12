@@ -48,7 +48,12 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - run: npm ci
       - name: Unit tests
-        run: npm test
+        run: |
+          set -o pipefail
+          node --no-node-snapshot --test --test-reporter=tap | tee unit.tap
+      - name: Annotate failing unit tests
+        if: failure()
+        run: node ../.github/annotate-test-failures.js unit.tap
       - name: Integration tests
         run: npm run test:integration
 
