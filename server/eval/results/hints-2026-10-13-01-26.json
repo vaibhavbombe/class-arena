@@ -1,0 +1,617 @@
+{
+  "models": [
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "google/gemma-4-26b-a4b-it:free"
+  ],
+  "levels": [
+    1,
+    2
+  ],
+  "summary": [
+    {
+      "level": 1,
+      "cases": 20,
+      "aiAnswered": 20,
+      "questions": "20 (100%)",
+      "withCode": 0,
+      "onTarget": "17 (85%)",
+      "leaks": "0 (0%)"
+    },
+    {
+      "level": 2,
+      "cases": 20,
+      "aiAnswered": 19,
+      "questions": "0 (0%)",
+      "withCode": 0,
+      "onTarget": "17 (89%)",
+      "leaks": "5 (26%)"
+    }
+  ],
+  "rows": [
+    {
+      "case": "sum-reduce-no-initial",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "What does your function return when the input array is empty? Does it produce a value or cause an error?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "empty"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "sum-reduce-no-initial",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When using the reduce method, you need to give it an initial value to work with; otherwise, calling reduce on an empty array will cause an error because there's no starting point for the accumulation.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "empty"
+      ],
+      "leaks": [
+        "initial value"
+      ]
+    },
+    {
+      "case": "vowels-case-sensitive",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "What does your function return when given a string that contains only uppercase vowels, like 'AEIOU'?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "upper",
+        "case"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "vowels-case-sensitive",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Your current pattern only looks for lowercase vowels. To count both uppercase and lowercase vowels, you need to adjust the pattern so it treats letters case‑insensitively (or explicitly includes both cases).",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "upper",
+        "case"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "largest-negatives",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Consider what your function returns when the array contains only negative numbers, such as [-5, -2]. Does that match the expected largest value?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "negative"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "largest-negatives",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The function should determine the maximum value that exists in the nums array alone, without comparing it to any other number. Use Math.max with the spread operator on the array directly so it evaluates only the actual elements.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [],
+      "leaks": []
+    },
+    {
+      "case": "loop-off-by-one",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When the array has two elements, what index does the loop attempt to read on its final iteration?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "index"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "loop-off-by-one",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The loop should visit each element exactly once, using indices from 0 up to but not including the array's length. Using <= makes it try to read one past the end, which adds undefined to the sum.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "length",
+        "undefined"
+      ],
+      "leaks": [
+        "<="
+      ]
+    },
+    {
+      "case": "reverse-missing-join",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When you call your function with the string 'abc', what value does it actually return?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "string",
+        "return"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "reverse-missing-join",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The split and reverse steps give you an array of characters in the right order, but the function still returns that array. To get a string you need to turn the array back into a single string by combining its elements.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "array",
+        "string",
+        "return"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "palindrome-case",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "What does your function return when given the input 'Level' (with a capital L)?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "capital"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "palindrome-case",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "To ignore case, you should first convert the input string to a consistent case (either all lower‑case or all upper‑case) before checking if it reads the same forwards and backwards.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "upper",
+        "case"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "factorial-zero",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "What does your function return when you call factorial(0)?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "0"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "factorial-zero",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Your recursive function needs a base case that stops the recursion for the smallest valid input, which is 0, not just 1. Adjust the condition so that both 0 and 1 return 1, preventing endless calls.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "0",
+        "smallest"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "fizzbuzz-order",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "What does your function return when the input is 15?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "15"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "fizzbuzz-order",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Think about the order of your checks: if you test for divisibility by 3 or 5 first, numbers that are also divisible by 15 will be caught by those earlier tests. You need to handle the case where both conditions are true before handling the individual ones.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "15",
+        "both",
+        "order"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "words-extra-spaces",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Consider what your function returns when the string has extra spaces, like leading, trailing, or multiple spaces between words. What does it give for the input \"  hello   world  \"?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "spaces",
+        "space"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "words-extra-spaces",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The split on a single space treats consecutive spaces as separators that produce empty strings, which are counted as words. You need to either remove those empty parts or split on a pattern that treats any run of spaces as a single separator.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "empty",
+        "spaces",
+        "space"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "dedupe-inverted",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Your filter keeps elements when nums.indexOf(x) !== i. Think about what nums.indexOf(x) gives for the first time a value appears versus when it appears again. Which case makes the condition true, and which case makes it false?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "keep",
+        "which",
+        "first"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "dedupe-inverted",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Keep an element only when its current index matches the first index at which that value appears in the array. This means you should retain items where nums.indexOf(x) equals i, and discard those where it does not.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "keep",
+        "which",
+        "first"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "capitalize-duplicate",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When you call capitalize('cat'), what string does the function actually return? How does that compare to the expected output 'Cat'?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "output"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "capitalize-duplicate",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "You need to replace the original first character with its uppercase version, not just prepend it. Take the substring starting at the second character and attach it after the capitalized first letter.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "first letter"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "find-return-early",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Consider what happens when the first element in the array is not the target—does your function continue checking the rest of the array, or does it stop early?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "first",
+        "stop"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "find-return-early",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The function should keep searching through the whole array before deciding the target isn’t present. Only after the loop finishes, if no match was found, should you return -1.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "loop"
+      ],
+      "leaks": [
+        "after the loop"
+      ]
+    },
+    {
+      "case": "sort-lexicographic",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The built‑in sort method orders elements as strings by default. What do you notice when you run it on an array like [10, 2]?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "10",
+        "string"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "sort-lexicographic",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "To sort numbers correctly, you must supply a compare function to the sort method that returns the difference between two elements, ensuring numeric ordering rather than lexical.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [],
+      "leaks": [
+        "compare function"
+      ]
+    },
+    {
+      "case": "isodd-negative",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Try calling your function with a negative odd number, like -3. What value does it return?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "negative",
+        "-3"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "isodd-negative",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The modulo operator can return a negative remainder for negative numbers, so checking for exactly 1 misses cases like -3. Instead, think about what it means for a number to be odd in terms of its remainder when divided by 2.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "negative",
+        "-3"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "sum-digits-negative",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When you call your function with a negative number, such as -123, what value do you get back?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "negative",
+        "-123"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "sum-digits-negative",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The function should work the same for positive and negative numbers by first discarding the sign, then summing the digits of the absolute value.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "negative",
+        "sign"
+      ],
+      "leaks": [
+        "absolute value"
+      ]
+    },
+    {
+      "case": "flatten-push",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When you call flatten([1, [2, 3]]), what does the current loop actually put into the out array for the second element?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [],
+      "leaks": []
+    },
+    {
+      "case": "flatten-push",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "For each element in the input, determine whether it is an array. If it is, add each of its values separately to the output; if it is not, add the element itself. This way nested arrays contribute their contents one level deep.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "nested"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "char-count-nan",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When you try to increase counts[c] for a character that hasn't been seen yet, what does the expression counts[c]++ actually compute? What value does counts[c] have before the increment?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "before"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "char-count-nan",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "invalid_json",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "range-exclusive",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When you call range(1, 3), what values does the loop actually push into the array, and how does that differ from the expected result?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [],
+      "leaks": []
+    },
+    {
+      "case": "range-exclusive",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The loop currently stops before reaching the end value, so the last number is never added. To fix this, you need to let the loop run one more iteration so that the end value is included in the result.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "last",
+        "end",
+        "include"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "average-integer",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Try the function with the array [1, 2, 3]. What value does it return, and how does that compare to the true average of those numbers?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [],
+      "leaks": []
+    },
+    {
+      "case": "average-integer",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "After adding up all the numbers, you need to divide the total by how many numbers there are, not by a fixed value like 2.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "how many"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "max-swapped",
+      "level": 1,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "When you call bigger(2, 5), what value does your function return?",
+      "isQuestion": true,
+      "hasCode": false,
+      "onTarget": [
+        "bigger"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "max-swapped",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Your function should return the value that is greater when comparing a and b. Think about which branch of your conditional corresponds to the larger number and adjust the return value accordingly.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "which",
+        "larger"
+      ],
+      "leaks": []
+    }
+  ]
+}
