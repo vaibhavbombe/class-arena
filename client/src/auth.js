@@ -40,7 +40,7 @@ export function clearAuth() {
 
 export function isLoggedIn() {
   try {
-    return Boolean(localStorage.getItem(MARKER) || localStorage.getItem('refreshToken'))
+    return Boolean(localStorage.getItem(MARKER))
   } catch {
     return Boolean(accessToken)
   }

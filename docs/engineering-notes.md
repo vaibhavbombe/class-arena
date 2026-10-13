@@ -64,7 +64,9 @@ was measured; where something is unknown or unfinished, it says so.
   the API, so the cookie is first-party (`HttpOnly; Secure; SameSite=Strict; Path=/api/auth`). The access token
   lives in memory only; sockets keep using it, so WebSockets never go through Vercel.
 - **Details that mattered:** concurrent refreshes share one request; if another tab already rotated the cookie,
-  the refresh retries once instead of logging the user out; old `localStorage` sessions are moved over once.
+  the refresh retries once instead of logging the user out; old `localStorage` sessions were moved over once
+  by a temporary path that accepted the token in the request body, removed a day later (now only the cookie
+  is accepted, and a test checks that a token in the body is refused).
 - **Evidence:** a live browser check on the deployed site: no tokens in `localStorage`, the cookie invisible to
   `document.cookie`, still logged in after a reload, cookie gone after logout.
 - **Honest limit:** an injected script can still act while the page is open; the cookie stops it carrying a

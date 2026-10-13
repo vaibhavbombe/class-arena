@@ -265,9 +265,7 @@ For the problems found along the way (how each was found, the fix and the eviden
 - An injected script (XSS) can't read the refresh token, but it can still use the logged-in session while the
   page is open (the Content-Security-Policy makes injecting and exfiltrating harder, not impossible: styles
   still allow inline). The Monaco version is pinned in the CSP, so upgrading the editor means updating
-  `client/vercel.json` (the browser tests fail on any CSP violation, so a mismatch is caught). A token sent in
-  the request body is still accepted by
-  `/api/auth/refresh` so sessions from before the cookie change could move over; that path can be removed later.
+  `client/vercel.json` (the browser tests fail on any CSP violation, so a mismatch is caught).
 - Browser tests cover five core flows only (see **Testing**); the other screens have been checked by hand.
 - The code judge runs JavaScript only. A V8 isolate is a weaker boundary than a kernel-level sandbox
   (namespaces/seccomp, as in Judge0), and the worker shares the host with the API on Render's single

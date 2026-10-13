@@ -14,20 +14,15 @@ export const authApi = axios.create({ baseURL: AUTH_URL, withCredentials: true }
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function requestNewAccessToken() {
-  // One-time move for sessions from before the cookie: their refresh token was in localStorage.
-  let legacy = null
-  try { legacy = localStorage.getItem('refreshToken') } catch { /* storage blocked */ }
   try {
-    const response = await authApi.post('/api/auth/refresh', legacy ? { refreshToken: legacy } : undefined)
+    const response = await authApi.post('/api/auth/refresh')
     return response.data.accessToken
   } catch (error) {
-    if (error.response?.status !== 401 || legacy) throw error
+    if (error.response?.status !== 401) throw error
     // Another tab may have just rotated the shared cookie; the browser has the new one now.
     await sleep(500)
     const response = await authApi.post('/api/auth/refresh')
     return response.data.accessToken
-  } finally {
-    try { localStorage.removeItem('refreshToken'); localStorage.removeItem('accessToken') } catch { /* ignore */ }
   }
 }
 
