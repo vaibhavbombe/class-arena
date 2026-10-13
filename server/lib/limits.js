@@ -24,4 +24,6 @@ module.exports = {
   resetPassword: { perIp: { name: 'reset-ip', limit: 30, windowSec: 15 * MIN } },
   inviteAccept: { perIp: { name: 'invite-accept-ip', limit: 30, windowSec: 15 * MIN } },
   gamePin: { wrongPinsPerUser: { name: 'pin-fail-user', limit: 20, windowSec: 10 * MIN } },
+  // A 6-digit code is a 1-in-a-million guess; 10 tries per 15 minutes keeps guessing hopeless.
+  mfa: { wrongCodesPerUser: { name: 'mfa-fail-user', limit: 10, windowSec: 15 * MIN } },
 }

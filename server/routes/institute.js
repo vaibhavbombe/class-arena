@@ -36,9 +36,13 @@ router.get('/me', requireAuth, async (req, res) => {
 router.get('/members', requireAuth, requirePermission('members.view'), async (req, res) => {
   const filter = { institutionId: req.institutionId }
   if (User.ROLES.includes(req.query.role)) filter.role = req.query.role
-  const members = await User.find(filter).select('-passwordHash').populate('customRoleId', 'name').sort({ role: 1, name: 1 })
+  // Only listed fields leave the server: never the password hash or any 2FA secret or recovery code.
+  const members = await User.find(filter).select('email name role institutionId customRoleId createdAt mfa.enabled').populate('customRoleId', 'name').sort({ role: 1, name: 1 })
   // roleName: the custom role's name, or the built-in role.
-  res.json(members.map((m) => ({ ...m.toObject(), customRoleId: m.customRoleId?._id || null, roleName: m.customRoleId?.name || m.role })))
+  res.json(members.map((m) => ({
+    _id: m._id, email: m.email, name: m.name, role: m.role, institutionId: m.institutionId, createdAt: m.createdAt,
+    customRoleId: m.customRoleId?._id || null, roleName: m.customRoleId?.name || m.role, mfaEnabled: Boolean(m.mfa?.enabled),
+  })))
 })
 
 // Removes a member of the caller's institute. Deletes are ordered so the user goes

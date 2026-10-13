@@ -58,6 +58,13 @@ const emit = (socket, event, payload) => new Promise((resolve) => socket.emit(ev
   check(`after ${pinLimit} wrong game PINs a student is blocked`, /Too many wrong PINs/.test(pinBlocked.error || ''), pinBlocked)
   socket.close()
 
+  // Two-factor codes: wrong guesses per user.
+  await call('POST', '/api/auth/mfa/setup', { password: PW }, cat.accessToken)
+  const mfaLimit = LIMITS.mfa.wrongCodesPerUser.limit
+  await repeat(mfaLimit, () => call('POST', '/api/auth/mfa/enable', { code: '000000' }, cat.accessToken))
+  const mfaBlocked = await call('POST', '/api/auth/mfa/enable', { code: '000000' }, cat.accessToken)
+  check(`after ${mfaLimit} wrong 2FA codes the user is blocked`, mfaBlocked.s === 429 && /Too many wrong codes/.test(mfaBlocked.d.error), mfaBlocked)
+
   // Student signup with wrong class codes: per IP (this blocks the IP's signups for a while).
   const signupLimit = LIMITS.studentSignup.wrongCodesPerIp.limit
   await repeat(signupLimit, (i) => call('POST', '/api/auth/student-signup', { name: 'Guess', email: `rl-g${i}${run}@example.com`, password: PW, joinCode: 'QQQQQQ' }))

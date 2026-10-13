@@ -41,3 +41,7 @@ services:
       # IP it forwards when this matches. Any long random string, the same in Vercel and Render.
       - key: PROXY_SECRET
         sync: false
+      # Encrypts two-factor (authenticator) secrets at rest. 32 random bytes, base64. 2FA stays off
+      # until it is set. Changing it later makes existing 2FA setups unreadable (users re-enrol).
+      - key: MFA_ENCRYPTION_KEY
+        sync: false
