@@ -63,7 +63,8 @@ router.get('/', async (req, res) => {
     classes = await Class.find({ _id: { $in: enrollments.map((e) => e.classId) }, institutionId: req.institutionId })
   } else {
     const filter = { institutionId: req.institutionId }
-    if (req.role === 'teacher') filter.teacherId = req.userId
+    // Teachers see their own classes, unless their role can see every class (read-only).
+    if (req.role === 'teacher' && !req.permissions.includes('classes.view_all')) filter.teacherId = req.userId
     classes = await Class.find(filter)
   }
   classes.sort((a, b) => b.createdAt - a.createdAt)
@@ -115,7 +116,7 @@ router.post('/join', requireRole('student'), async (req, res) => {
 
 // Class analytics for its teacher and admins (see lib/analytics.js for what's computed).
 router.get('/:id/analytics', requirePermission('analytics.view'), async (req, res) => {
-  const cls = await findVisibleClass(req, req.params.id)
+  const cls = await findVisibleClass(req, req.params.id, { read: true })
   if (!cls) return res.status(404).json({ error: 'Class not found' })
   const now = new Date()
 
@@ -155,7 +156,7 @@ router.get('/:id/analytics', requirePermission('analytics.view'), async (req, re
 })
 
 router.get('/:id', async (req, res) => {
-  const cls = await findVisibleClass(req, req.params.id)
+  const cls = await findVisibleClass(req, req.params.id, { read: true })
   if (!cls) return res.status(404).json({ error: 'Class not found' })
 
   const teacher = await User.findById(cls.teacherId).select('name')
