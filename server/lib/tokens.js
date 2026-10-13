@@ -13,6 +13,25 @@ function signAccessToken(user) {
   )
 }
 
+// The "halfway" token after a correct password when 2FA is on: it only allows the code step.
+// It's signed with a separate key derived from the access-token secret, so it can never pass as
+// an access token, and it expires in 5 minutes.
+const mfaKey = () => crypto.createHmac('sha256', process.env.JWT_ACCESS_SECRET).update('classarena:mfa-login').digest()
+
+function signMfaToken(user) {
+  return jwt.sign({ userId: user._id.toString(), purpose: 'mfa-login' }, mfaKey(), { expiresIn: '5m' })
+}
+
+// Returns the user id, or null if the token is invalid, expired or not an MFA token.
+function verifyMfaToken(token) {
+  try {
+    const payload = jwt.verify(String(token), mfaKey())
+    return payload.purpose === 'mfa-login' ? payload.userId : null
+  } catch {
+    return null
+  }
+}
+
 async function issueRefreshToken(userId) {
   const token = crypto.randomBytes(40).toString('hex')
   await RefreshToken.create({
@@ -34,4 +53,4 @@ async function authResponse(user, res) {
   return { accessToken: signAccessToken(user), user: publicUser(user) }
 }
 
-module.exports = { signAccessToken, issueRefreshToken, publicUser, authResponse }
+module.exports = { signAccessToken, signMfaToken, verifyMfaToken, issueRefreshToken, publicUser, authResponse }
