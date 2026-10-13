@@ -88,6 +88,9 @@ bcrypt, jsonwebtoken, Socket.io, Redis (ioredis), Brevo (production email) / nod
 Vercel (client), Render (server)
 
 ## Design decisions
+For the problems found along the way (how each was found, the fix and the evidence), see
+[docs/engineering-notes.md](docs/engineering-notes.md).
+
 - **The tenant comes from the token, never the request.** `institutionId` is signed into the
   access token; every tenant-scoped query filters on `req.institutionId` set by the auth middleware.
 - **Role changes apply immediately.** The middleware re-reads the user on each request instead
