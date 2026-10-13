@@ -89,7 +89,9 @@ Vercel (client), Render (server)
 
 ## Design decisions
 For the problems found along the way (how each was found, the fix and the evidence), see
-[docs/engineering-notes.md](docs/engineering-notes.md).
+[docs/engineering-notes.md](docs/engineering-notes.md). For the full walk-through (problem, architecture,
+every technology choice against its alternatives, and questions from basic to system design), see
+[docs/project-deep-dive.md](docs/project-deep-dive.md).
 
 - **The tenant comes from the token, never the request.** `institutionId` is signed into the
   access token; every tenant-scoped query filters on `req.institutionId` set by the auth middleware.
