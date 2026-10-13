@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
+import { can } from '../permissions.js'
 import { buttonStyle, cellStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, messageStyle, sectionTitleStyle, tableWrapStyle } from '../styles.js'
 
-// Admin only: everyone in the institute, plus the teacher invite form.
-export default function MembersPanel({ currentUserId }) {
+// Everyone in the institute (members.view), the invite form (members.invite), removing
+// members (members.remove) and giving teachers a custom role (roles.manage, admins only).
+export default function MembersPanel({ me, rolesVersion = 0 }) {
+  const currentUserId = me.user.id
+  const isAdmin = me.user.role === 'admin'
+  const canInvite = can(me, 'members.invite')
+  const canRemove = can(me, 'members.remove')
+  const canAssign = can(me, 'roles.manage')
   const [members, setMembers] = useState([])
+  const [roles, setRoles] = useState([])
   const [roleFilter, setRoleFilter] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('teacher')
@@ -19,7 +27,22 @@ export default function MembersPanel({ currentUserId }) {
       .catch(() => setMembers([]))
   }
 
-  useEffect(loadMembers, [roleFilter])
+  useEffect(loadMembers, [roleFilter, rolesVersion])
+  useEffect(() => {
+    if (!canAssign) return
+    api.get('/api/roles').then((response) => setRoles(response.data)).catch(() => setRoles([]))
+  }, [canAssign, rolesVersion])
+
+  async function assignRole(member, roleId) {
+    setRemoveMsg(null)
+    try {
+      const response = await api.put(`/api/members/${member._id}/role`, { roleId: roleId || null })
+      setRemoveMsg({ ok: true, text: `${member.name} is now: ${response.data.roleName}. It applies on their next action.` })
+      loadMembers()
+    } catch (requestError) {
+      setRemoveMsg({ ok: false, text: errorMessage(requestError, 'Could not change the role.') })
+    }
+  }
 
   async function removeMember(member) {
     const consequence = member.role === 'student'
@@ -86,11 +109,18 @@ export default function MembersPanel({ currentUserId }) {
               <tr key={member._id}>
                 <td style={cellStyle}>{member.name}</td>
                 <td style={{ ...cellStyle, color: colors.muted }}>{member.email}</td>
-                <td style={{ ...cellStyle, color: colors.success }}>{member.role}</td>
+                <td style={{ ...cellStyle, color: colors.success }}>
+                  {member.role === 'teacher' && canAssign ? (
+                    <select value={member.customRoleId || ''} onChange={(event) => assignRole(member, event.target.value)} aria-label={`Role for ${member.name}`} style={{ ...inputStyle, padding: '0.2rem 0.4rem' }}>
+                      <option value="">teacher (default)</option>
+                      {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                    </select>
+                  ) : member.roleName || member.role}
+                </td>
                 <td style={{ ...cellStyle, textAlign: 'right' }}>
                   {member._id === currentUserId ? (
                     <span style={{ color: colors.muted }}>you</span>
-                  ) : (
+                  ) : !canRemove || (member.role === 'admin' && !isAdmin) ? null : (
                     <button onClick={() => removeMember(member)} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>Remove</button>
                   )}
                 </td>
@@ -101,12 +131,13 @@ export default function MembersPanel({ currentUserId }) {
       </div>
       {removeMsg && <p role="status" style={messageStyle(removeMsg.ok)}>{removeMsg.text}</p>}
 
+      {canInvite && <>
       <h3 style={{ fontSize: '0.9rem', marginTop: '1.5rem' }}>Invite a teacher</h3>
       <form onSubmit={handleInvite} style={inlineFormStyle}>
         <input type="email" required value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} placeholder="teacher@email.com" style={inputStyle} />
         <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)} style={inputStyle}>
           <option value="teacher">teacher</option>
-          <option value="admin">admin</option>
+          {isAdmin && <option value="admin">admin</option>}
         </select>
         <button type="submit" disabled={sending} style={{ ...buttonStyle, opacity: sending ? 0.6 : 1 }}>
           {sending ? 'Sending…' : 'Invite'}
@@ -127,6 +158,7 @@ export default function MembersPanel({ currentUserId }) {
           )}
         </p>
       )}
+      </>}
     </section>
   )
 }

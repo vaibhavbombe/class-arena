@@ -15,7 +15,7 @@ export const CONTEST_STATUS = {
 const when = (date) => new Date(date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 // Coding contests in a class. Staff create them here and set them up on the contest page.
-export default function ContestsPanel({ classId, isStaff }) {
+export default function ContestsPanel({ classId, isStaff, canCreate = isStaff }) {
   const navigate = useNavigate()
   const [contests, setContests] = useState([])
   const [title, setTitle] = useState('')
@@ -41,7 +41,7 @@ export default function ContestsPanel({ classId, isStaff }) {
     <section>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
         <h3 style={sectionTitleStyle}>Coding contests</h3>
-        {isStaff && <button onClick={() => setCreating((open) => !open)} style={creating ? ghostButtonStyle : buttonStyle}>{creating ? 'Close' : '+ New contest'}</button>}
+        {canCreate && <button onClick={() => setCreating((open) => !open)} style={creating ? ghostButtonStyle : buttonStyle}>{creating ? 'Close' : '+ New contest'}</button>}
       </div>
       {creating && (
         <form onSubmit={create} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>

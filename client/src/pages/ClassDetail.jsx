@@ -8,6 +8,7 @@ import ProblemsPanel from '../components/ProblemsPanel.jsx'
 import ContestsPanel from '../components/ContestsPanel.jsx'
 import TestsPanel from '../components/TestsPanel.jsx'
 import { errorMessage } from '../session.js'
+import { can } from '../permissions.js'
 import useMe from '../useMe.js'
 import { cellStyle, codeStyle, colors, dangerButtonStyle, ghostButtonStyle, inlineFormStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, tableWrapStyle, widePageStyle } from '../styles.js'
 
@@ -31,7 +32,7 @@ export default function ClassDetail() {
 
   // Admins can hand the class to another teacher; they need the list of staff for that.
   useEffect(() => {
-    if (me?.user.role !== 'admin') return
+    if (!can(me, 'classes.assign') || !can(me, 'members.view')) return
     api.get('/api/members')
       .then((response) => setStaff(response.data.filter((member) => member.role !== 'student')))
       .catch(() => setStaff([]))
@@ -83,6 +84,10 @@ export default function ClassDetail() {
 
   if (!me) return null
   const isStaff = me.user.role !== 'student'
+  // Acting on a class needs ownership (or admin) plus the permission; roles that can only read
+  // every class (classes.view_all) see it without the buttons the server would refuse.
+  const owns = me.user.role === 'admin' || (cls?.teacher?.id === me.user.id)
+  const may = (permission) => owns && can(me, permission)
   const joinLink = cls?.joinCode && `${window.location.origin}/join?code=${cls.joinCode}`
 
   return (
@@ -95,24 +100,24 @@ export default function ClassDetail() {
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <h2 style={{ marginBottom: '0.25rem' }}>{cls.name}</h2>
-            {isStaff && <Link to={`/classes/${id}/analytics`} style={{ ...ghostButtonStyle, textDecoration: 'none' }}>📊 Analytics</Link>}
+            {can(me, 'analytics.view') && <Link to={`/classes/${id}/analytics`} style={{ ...ghostButtonStyle, textDecoration: 'none' }}>📊 Analytics</Link>}
           </div>
           <p style={{ color: colors.muted, marginTop: 0 }}>
             {cls.subject && `${cls.subject} · `}Teacher: {cls.teacher?.name}
           </p>
 
           <ActiveGamesBanner classId={id} isStaff={isStaff} />
-          <TestsPanel classId={id} isStaff={isStaff} />
-          <ContestsPanel classId={id} isStaff={isStaff} />
-          <ProblemsPanel classId={id} isStaff={isStaff} />
-          {isStaff && <LiveQuizzesPanel classId={id} />}
+          <TestsPanel classId={id} isStaff={isStaff} canCreate={may('tests.manage')} />
+          <ContestsPanel classId={id} isStaff={isStaff} canCreate={may('coding.manage')} />
+          <ProblemsPanel classId={id} isStaff={isStaff} canCreate={may('coding.manage')} />
+          {may('live.host') && <LiveQuizzesPanel classId={id} />}
 
-          {isStaff && (
+          {isStaff && owns && (
             <>
               <h3 style={sectionTitleStyle}>Join code</h3>
               <p>
                 <span style={{ ...codeStyle, fontSize: '1.5rem' }}>{cls.joinCode}</span>{' '}
-                <button onClick={regenerateCode} style={{ ...ghostButtonStyle, marginLeft: '1rem' }}>New code</button>
+                {may('classes.manage') && <button onClick={regenerateCode} style={{ ...ghostButtonStyle, marginLeft: '1rem' }}>New code</button>}
               </p>
               <p style={{ color: colors.muted, fontSize: '0.85rem', wordBreak: 'break-all' }}>Or share: {joinLink}</p>
               {codeMsg && <p style={messageStyle(codeMsg.ok)}>{codeMsg.text}</p>}
@@ -138,7 +143,7 @@ export default function ClassDetail() {
                           <td style={{ ...cellStyle, color: colors.muted }}>{student.email}</td>
                           <td style={{ ...cellStyle, color: colors.muted }}>{new Date(student.joinedAt).toLocaleDateString()}</td>
                           <td style={{ ...cellStyle, textAlign: 'right' }}>
-                            <button onClick={() => removeStudent(student)} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>Remove</button>
+                            {may('classes.manage') && <button onClick={() => removeStudent(student)} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>Remove</button>}
                           </td>
                         </tr>
                       ))}
@@ -149,7 +154,7 @@ export default function ClassDetail() {
 
               <h3 style={sectionTitleStyle}>Manage class</h3>
               <div style={inlineFormStyle}>
-                {me.user.role === 'admin' && (
+                {can(me, 'classes.assign') && (
                   <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.85rem' }}>
                     Teacher
                     <select value={cls.teacher?.id || ''} onChange={changeTeacher} style={inputStyle}>
@@ -160,7 +165,7 @@ export default function ClassDetail() {
                     </select>
                   </label>
                 )}
-                <button onClick={deleteClass} style={dangerButtonStyle}>Delete class</button>
+                {may('classes.manage') && <button onClick={deleteClass} style={dangerButtonStyle}>Delete class</button>}
               </div>
               {manageMsg && <p role="status" style={messageStyle(manageMsg.ok)}>{manageMsg.text}</p>}
             </>

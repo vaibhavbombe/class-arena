@@ -25,6 +25,11 @@ The demo admin's password isn't shared, because admins can send invite emails.
     removes members and hands a class to another teacher.
   - *Teacher*: creates and deletes classes, sees join codes and rosters, removes students from a class.
   - *Student*: signs up with a 6-character class join code and can join more classes from the dashboard.
+- **Custom roles and permissions (IAM):** every staff action is a named permission (16, e.g. `tests.manage`,
+  `results.release`, `members.invite`). Admins build custom roles from them with checkboxes, such as a
+  "Teaching Assistant" who can only see and release results, or a "Head of Department" who can read every
+  class but change none, and give them to teachers; it applies on the teacher's next request. Buttons a
+  role can't use are hidden, and the server refuses them anyway.
 - **Auth:** 15-minute JWT access tokens kept in memory, plus 30-day refresh tokens in an httpOnly cookie
   that rotate on every use, with an axios interceptor that refreshes silently on a 401 (and after a reload).
 - **Question bank** (teachers and admins): multiple choice, multi-select and short-answer questions
@@ -220,6 +225,16 @@ every technology choice against its alternatives, and questions from basic to sy
   Login doesn't apply them, so older accounts still work. The 72 cap is because bcrypt ignores
   anything past 72 bytes. (NIST SP 800-63B prefers length plus breached-password checks over
   composition rules; a breached-password check is not implemented.)
+- **Permissions separate "who you are" from "what you may do".** The persona (admin, teacher, student)
+  still decides *data scope*: the whole institute, the classes you teach, or the classes you're enrolled in.
+  Every staff action is a permission checked by `requirePermission(...)` (`lib/permissions.js`); admins have
+  all, a teacher has the classic teacher set or exactly the set of a custom role, students have none.
+  Permissions are resolved from the database on every request, never stored in the token, so a role change
+  applies immediately. **No privilege escalation:** managing roles is admin-only and can't be put into a custom
+  role; delegated `members.invite` / `members.remove` can't invite or remove admins. **Read scope is opt-in:**
+  `classes.view_all` only affects endpoints that pass `{ read: true }` to the class lookup; every write keeps
+  the strict owner/admin rule, so a "Head of Department" can't change another teacher's test even if the role
+  also has `tests.manage`. A unit test fails if any route gates staff actions by role again.
 - **Rate limits count failures, not people.** A whole school can share one public IP, so per-IP limits are
   generous (e.g. 200 logins per 15 minutes) and only stop floods. Guessing is stopped by counting *failures*
   per target in Redis (`lib/limits.js` lists every limit): 10 wrong passwords per account per IP in 15
@@ -323,11 +338,11 @@ Server environment variables:
 ## Testing
 To test by hand, follow [docs/manual-testing.md](docs/manual-testing.md) (every feature, step by step, with what you should see).
 
-- **Unit tests** (`npm test`, 119 tests, Node's built-in runner): the pure logic — question validation,
+- **Unit tests** (`npm test`, 128 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, contest ranking (penalties, ties, first solves, the freeze), the AI client (schema checks, retry, timeouts, no retry on 401, the key never logged) and hint rules (code detection, prompt contents, fallbacks), the question generator's validation, feedback rules, and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 23 suites, 342 checks; add suite names to run only those): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 24 suites, 369 checks; add suite names to run only those): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -349,7 +364,7 @@ To test by hand, follow [docs/manual-testing.md](docs/manual-testing.md) (every 
   secrets: email is off and AI goes to the fake AI server).
 - **Load test** (`npm run loadtest`): simulated students in live quizzes and a contest; see **Performance** below.
   It measures, it doesn't pass or fail, and it isn't run automatically.
-- **Browser tests** (`e2e/`, `npx playwright test`, 7 tests, also in CI): Playwright starts its own API and serves the
+- **Browser tests** (`e2e/`, `npx playwright test`, 8 tests, also in CI): Playwright starts its own API and serves the
   client's **production build with the same headers as Vercel** (CSP included; any CSP violation fails a test)
   and drives Chromium through logging in (and checking that no token is readable by page scripts and that a reload keeps you logged in), a student taking a timed test, a live quiz with the teacher and a
   student in two browsers at once, coding practice in Monaco judged on submit, and that code run in the browser
@@ -444,9 +459,12 @@ because the API (correctly) doesn't allow backdating submissions.
 | POST | `/api/auth/student-signup` | anyone with a join code |
 | POST | `/api/auth/login`, `/refresh`, `/logout` | anyone |
 | POST | `/api/auth/forgot-password`, `/reset-password` | anyone |
-| GET | `/api/me` | logged in |
-| GET | `/api/members?role=` | admin |
-| POST | `/api/invites` | admin |
+| GET | `/api/me` | logged in (includes `roleName` and `permissions`) |
+| GET | `/api/members?role=` | `members.view` |
+| PUT | `/api/members/:id/role` (`{ roleId }` or `null`) | `roles.manage` (admins); teachers only |
+| GET / POST | `/api/roles` · `GET /api/roles/catalog` | `roles.manage` |
+| PUT / DELETE | `/api/roles/:id` | `roles.manage` (an assigned role can't be deleted) |
+| POST | `/api/invites` | `members.invite` (inviting an admin: admins only) |
 | POST | `/api/invites/accept` | anyone with an invite token |
 | GET / POST | `/api/classes` | list: all roles (scoped) · create: teacher, admin |
 | POST | `/api/classes/join` | student |
@@ -455,7 +473,7 @@ because the API (correctly) doesn't allow backdating submissions.
 | DELETE | `/api/classes/:id` | class teacher, admin |
 | DELETE | `/api/classes/:id/students/:studentId` | class teacher, admin |
 | PATCH | `/api/classes/:id/teacher` | admin |
-| DELETE | `/api/members/:id` | admin (not yourself; teachers must have no classes) |
+| DELETE | `/api/members/:id` | `members.remove` (removing an admin: admins only; not yourself; teachers must have no classes) |
 | GET / POST | `/api/questions` (`?type=&tag=&q=`) | teacher (own), admin (all) |
 | GET | `/api/questions/tags` | teacher, admin |
 | GET / PUT / DELETE | `/api/questions/:id` | owner, admin |

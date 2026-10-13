@@ -339,6 +339,28 @@ I measured the `X-Forwarded-For` shape on the deployed service (3 hops on Render
 Express's `trust proxy` to the exact count. For the Vercel path, the middleware sends the IP with a shared
 secret, because trusting a header based on its shape would be spoofable.
 
+### Access control (IAM)
+
+**Q: How do permissions work?**
+I separated *who you are* from *what you may do*. The persona (admin, teacher, student) decides data scope:
+the whole institute, your classes, or your enrolled classes. Every staff action is a named permission
+(16 of them) checked by middleware. Admins build custom roles from them, such as a Teaching Assistant who can
+only see and release results, and assign them to teachers.
+
+**Q: How do you stop privilege escalation?**
+Managing roles is admin-only and can't be put into a custom role, so nobody can grant themselves more. If
+inviting or removing members is delegated, it still can't touch admins. Permissions are resolved from the
+database on every request, not stored in the JWT, so revoking one applies to the very next request.
+
+**Q: A role can read every class. How do you make sure it can't write?**
+Read access is opt-in per endpoint: only read endpoints pass `{ read: true }` to the class lookup; every write
+keeps the strict owner-or-admin rule. A test proves a "Head of Department" with `tests.manage` still can't edit
+another teacher's test. Defaulting to strict means a forgotten endpoint fails closed, not open.
+
+**Q: How do you keep the UI and the server in sync?**
+`/api/me` returns the resolved permissions and the UI hides what you can't use, but the server is the only
+authority; and a unit test scans the routes and fails if a staff action is ever gated by role again.
+
 ### System design follow-ups
 
 **Q: How would you support 10,000 students in live quizzes at once?**

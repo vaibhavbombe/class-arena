@@ -63,7 +63,11 @@ export default function TestEditor() {
 
   useEffect(() => {
     api.get(`/api/tests/${id}`)
-      .then((response) => applyTest(response.data))
+      .then((response) => {
+        // Read-only staff (no tests.manage, or someone else's class): show the results instead.
+        if (response.data.canEdit === false) return navigate(`/tests/${id}/results`, { replace: true })
+        applyTest(response.data)
+      })
       .catch((requestError) => setMessage({ ok: false, text: errorMessage(requestError, 'Could not load this test.') }))
   }, [id])
 
