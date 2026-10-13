@@ -13,7 +13,7 @@ const STATUS = {
 }
 
 // Coding practice problems in a class. Staff add them from the bank; students solve them.
-export default function ProblemsPanel({ classId, isStaff }) {
+export default function ProblemsPanel({ classId, isStaff, canCreate = isStaff }) {
   const [problems, setProblems] = useState([])
   const [adding, setAdding] = useState(false)
   const [message, setMessage] = useState(null)
@@ -39,7 +39,7 @@ export default function ProblemsPanel({ classId, isStaff }) {
     <section>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
         <h3 style={sectionTitleStyle}>Coding practice</h3>
-        {isStaff && <button onClick={() => setAdding((open) => !open)} style={adding ? ghostButtonStyle : buttonStyle}>{adding ? 'Close' : '+ Add coding problem'}</button>}
+        {canCreate && <button onClick={() => setAdding((open) => !open)} style={adding ? ghostButtonStyle : buttonStyle}>{adding ? 'Close' : '+ Add coding problem'}</button>}
       </div>
       {message && <p role="status" style={messageStyle(message.ok)}>{message.text}</p>}
       {adding && <QuestionPicker addedIds={new Set()} onAdd={addProblem} types={CODE_ONLY} />}

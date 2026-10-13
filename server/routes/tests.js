@@ -87,7 +87,11 @@ router.post('/', requirePermission('tests.manage'), async (req, res) => {
 router.get('/:id', async (req, res) => {
   const test = await findVisibleTest(req, req.params.id, { read: true })
   if (!test) return res.status(404).json({ error: 'Test not found' })
-  res.json(isStaff(req) ? rules.staffDetail(test) : rules.studentOutline(test))
+  if (!isStaff(req)) return res.json(rules.studentOutline(test))
+  // Staff who can only read this class (e.g. classes.view_all) get canEdit: false, so the page
+  // can show results instead of an editor whose saves would be refused.
+  const writable = await findVisibleClass(req, test.classId)
+  res.json({ ...rules.staffDetail(test), canEdit: Boolean(writable) && req.permissions.includes('tests.manage') })
 })
 
 router.put('/:id', requirePermission('tests.manage'), async (req, res) => {

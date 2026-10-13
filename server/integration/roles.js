@@ -52,6 +52,9 @@ const { run, PW, call, check, invite, connectTestDb, finish } = require('./helpe
   const editOthers = await call('PUT', `/api/tests/${t.id}`, { title: 'Hijacked' }, hod.accessToken)
   const createInOthers = await call('POST', '/api/tests', { classId: cls.id, title: 'Sneaky test' }, hod.accessToken)
   check('...but cannot change another teacher\'s test or add one to their class (read-only scope)', editOthers.s === 404 && createInOthers.s === 404, { edit: editOthers.s, create: createInOthers.s })
+  const ownerView = (await call('GET', `/api/tests/${t.id}`, null, owner.accessToken)).d
+  const hodView = (await call('GET', `/api/tests/${t.id}`, null, hod.accessToken)).d
+  check('the test page tells the owner they can edit, and the read-only role that it cannot', ownerView.canEdit === true && hodView.canEdit === false, { owner: ownerView.canEdit, hod: hodView.canEdit })
   check('a normal teacher still cannot see other teachers\' classes', (await call('GET', `/api/classes/${cls.id}`, null, ta.accessToken)).s === 404, null)
 
   // --- delegated member management cannot escalate

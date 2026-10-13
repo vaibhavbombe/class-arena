@@ -2,12 +2,17 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api.js'
 import { errorMessage } from '../session.js'
+import { can } from '../permissions.js'
 import { buttonStyle, cellStyle, codeStyle, colors, inlineFormStyle, inputStyle, linkStyle, messageStyle, sectionTitleStyle, tableWrapStyle } from '../styles.js'
 
 // Staff create classes and see join codes; students join by code.
 // The server already returns only the classes this user may see.
-export default function ClassesPanel({ role }) {
+export default function ClassesPanel({ me }) {
+  const role = me.user.role
   const isStaff = role !== 'student'
+  const canCreate = can(me, 'classes.create')
+  // Admins and roles with classes.view_all see every class (with its teacher).
+  const seesAll = role === 'admin' || can(me, 'classes.view_all')
   const [classes, setClasses] = useState([])
   const [form, setForm] = useState({ name: '', subject: '', joinCode: '' })
   const [message, setMessage] = useState(null)
@@ -42,9 +47,9 @@ export default function ClassesPanel({ role }) {
 
   return (
     <section>
-      <h2 style={sectionTitleStyle}>{role === 'admin' ? 'All classes' : 'My classes'}</h2>
+      <h2 style={sectionTitleStyle}>{seesAll ? 'All classes' : 'My classes'}</h2>
 
-      <form onSubmit={handleSubmit} style={inlineFormStyle}>
+      {(!isStaff || canCreate) && <form onSubmit={handleSubmit} style={inlineFormStyle}>
         {isStaff ? (
           <>
             <input name="name" value={form.name} onChange={handleChange} placeholder="Class name" required style={inputStyle} />
@@ -57,7 +62,7 @@ export default function ClassesPanel({ role }) {
             <button type="submit" style={buttonStyle}>Join class</button>
           </>
         )}
-      </form>
+      </form>}
       {message && <p style={messageStyle(message.ok)}>{message.text}</p>}
 
       {classes.length === 0 ? (
@@ -71,7 +76,7 @@ export default function ClassesPanel({ role }) {
               <tr>
                 <th style={cellStyle}>Class</th>
                 <th style={cellStyle}>Subject</th>
-                {role !== 'teacher' && <th style={cellStyle}>Teacher</th>}
+                {(seesAll || !isStaff) && <th style={cellStyle}>Teacher</th>}
                 {isStaff && <th style={cellStyle}>Students</th>}
                 {isStaff && <th style={cellStyle}>Join code</th>}
               </tr>
@@ -81,7 +86,7 @@ export default function ClassesPanel({ role }) {
                 <tr key={cls.id}>
                   <td style={cellStyle}><Link to={`/classes/${cls.id}`} style={linkStyle}>{cls.name}</Link></td>
                   <td style={{ ...cellStyle, color: colors.muted }}>{cls.subject || '—'}</td>
-                  {role !== 'teacher' && <td style={cellStyle}>{cls.teacher?.name}</td>}
+                  {(seesAll || !isStaff) && <td style={cellStyle}>{cls.teacher?.name}</td>}
                   {isStaff && <td style={cellStyle}>{cls.studentCount}</td>}
                   {isStaff && <td style={{ ...cellStyle, ...codeStyle }}>{cls.joinCode}</td>}
                 </tr>

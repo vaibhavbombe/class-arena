@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { logout } from '../session.js'
 import ThemeToggle from './ThemeToggle.jsx'
 import { FONT, colors } from '../styles.js'
+import { can } from '../permissions.js'
 
 const navLinkStyle = ({ isActive }) => ({
   color: '#FFFFFF',
@@ -55,9 +56,8 @@ export default function AppHeader({ me }) {
       </div>
       <nav aria-label="Main" style={{ display: 'flex', gap: '0.35rem', marginTop: '0.6rem', overflowX: 'auto' }}>
         <NavLink to="/dashboard" style={navLinkStyle}>Classes</NavLink>
-        {isStaff
-          ? <NavLink to="/questions" style={navLinkStyle}>Question bank</NavLink>
-          : <NavLink to="/play" style={navLinkStyle}>▶ Join a live game</NavLink>}
+        {!isStaff && <NavLink to="/play" style={navLinkStyle}>▶ Join a live game</NavLink>}
+        {can(me, 'questions.manage') && <NavLink to="/questions" style={navLinkStyle}>Question bank</NavLink>}
       </nav>
     </header>
   )

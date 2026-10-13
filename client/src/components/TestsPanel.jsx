@@ -53,7 +53,7 @@ function StudentTestCards({ tests }) {
 }
 
 // Tests in a class. Staff see drafts too and can create tests; students see published ones.
-export default function TestsPanel({ classId, isStaff }) {
+export default function TestsPanel({ classId, isStaff, canCreate = isStaff }) {
   const [tests, setTests] = useState([])
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -78,7 +78,7 @@ export default function TestsPanel({ classId, isStaff }) {
     <section>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
         <h3 style={sectionTitleStyle}>Tests</h3>
-        {isStaff && <button onClick={createTest} style={buttonStyle}>+ New test</button>}
+        {canCreate && <button onClick={createTest} style={buttonStyle}>+ New test</button>}
       </div>
       {error && <p role="alert" style={messageStyle(false)}>{error}</p>}
 
