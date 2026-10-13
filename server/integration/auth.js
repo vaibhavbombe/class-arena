@@ -46,13 +46,13 @@ const { BASE, run, call, check, finish } = require('./helpers')
   check('old refresh token rejected after rotation', r2.status === 401, r2)
   check('no cookie at all: 401', (await call('POST', '/api/auth/refresh')).status === 401, null)
 
-  // Sessions from before the cookie change kept the token in localStorage; they can move over once.
-  const legacy = await call('POST', '/api/auth/refresh', { refreshToken: r1.refresh })
-  check('a token sent in the body (old sessions) still works once and moves to a cookie', legacy.status === 200 && legacy.refresh, legacy)
+  // The token is only accepted from the cookie: a valid one sent in the body is refused.
+  const inBody = await call('POST', '/api/auth/refresh', { refreshToken: r1.refresh })
+  check('a refresh token sent in the request body is not accepted', inBody.status === 401 && !inBody.refresh, inBody)
 
-  const out = await call('POST', '/api/auth/logout', null, null, { cookie: legacy.refresh })
+  const out = await call('POST', '/api/auth/logout', null, null, { cookie: r1.refresh })
   check('logout clears the cookie', out.status === 200 && out.cookie?.attributes.some((x) => /^Expires=Thu, 01 Jan 1970/.test(x)), out.cookie)
-  check('...and revokes the token on the server', (await call('POST', '/api/auth/refresh', null, null, { cookie: legacy.refresh })).status === 401, null)
+  check('...and revokes the token on the server', (await call('POST', '/api/auth/refresh', null, null, { cookie: r1.refresh })).status === 401, null)
 
   const health = await fetch(BASE + '/api/health')
   check('API responses carry security headers and no X-Powered-By', health.headers.get('content-security-policy') === "default-src 'none'; frame-ancestors 'none'" && health.headers.get('x-content-type-options') === 'nosniff' && !health.headers.get('x-powered-by'), Object.fromEntries(health.headers))

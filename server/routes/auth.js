@@ -113,9 +113,8 @@ router.post('/login', limitRequests(LIMITS.login.perIp), async (req, res) => {
 })
 
 router.post('/refresh', limitRequests(LIMITS.refresh.perIp), async (req, res) => {
-  // The token comes from the httpOnly cookie. A token in the body is still accepted so that
-  // sessions from before the cookie change (token in localStorage) can move over once.
-  const token = readRefreshCookie(req) || (typeof req.body?.refreshToken === 'string' ? req.body.refreshToken : '')
+  // The refresh token only ever arrives as the httpOnly cookie (never in the body).
+  const token = readRefreshCookie(req)
   if (!token) return res.status(401).json({ error: 'Not logged in' })
 
   // Rotation: each refresh token is single-use. findOneAndDelete is atomic, so two
@@ -197,7 +196,7 @@ router.post('/reset-password', limitRequests(LIMITS.resetPassword.perIp), async 
 })
 
 router.post('/logout', async (req, res) => {
-  const refreshToken = readRefreshCookie(req) || req.body?.refreshToken
+  const refreshToken = readRefreshCookie(req)
   if (typeof refreshToken === 'string' && refreshToken) {
     await RefreshToken.deleteOne({ token: refreshToken })
   }
