@@ -277,8 +277,9 @@ Vercel (client), Render (server)
   large contest would need a cached or incremental board); a contest can't be paused, extended or
   ended early; there is no rejudge; and only JavaScript is supported.
 - AI: there is no feedback in contests or timed tests (by design: it would be help during an
-  assessment). The quality of hints, reviews and generated questions hasn't been measured yet (no evaluation set or
-  user feedback), the daily limits are fixed in code, everything is English only, and generated MCQs
+  assessment). Hints were evaluated once on 20 cases (see **Hint quality** below); level-2 hints usually spell
+  out the fix in words. Reviews and generated questions haven't been measured (no evaluation set or user
+  feedback), the daily limits are fixed in code, everything is English only, and generated MCQs
   are only as correct as the teacher's review (the judge check exists for coding drafts only).
 - Multi-select has no partial credit, and short answers are exact matches after normalising (no
   fuzzy matching or manual regrading yet).
@@ -390,6 +391,32 @@ verdict, 0 errors.
   its time limit. More workers would raise throughput roughly linearly on a machine with spare cores; that hasn't
   been built.
 - Why the submit acknowledgement takes ~1.8 s when 50 requests arrive together hasn't been investigated yet.
+
+## Hint quality (measured once)
+
+`node eval/runHintEval.js --levels=1,2` (in `server/`) asks the model for hints on 20 typical beginner bugs
+(`eval/hintCases.js`: `reduce` without a starting value, a case-sensitive regex, `sort()` on numbers, …) using
+exactly the production prompt, validation and retry, and scores them by keywords. Because keywords miss a fix
+said in other words, every hint was also **read by one reviewer (the developer)**; both are in
+`server/eval/results/`. One run, on 2026-10-13, with the free OpenRouter model list from `render.yaml`:
+
+| | Level 1 (nudge) | Level 2 (approach) |
+|---|---|---|
+| Answered by the AI (rest: standard hint) | 20/20 | 19/20 (1 invalid JSON twice) |
+| Is a question | 20/20 | – |
+| Contains code | 0 | 0 |
+| On target (human) | 20/20 | – |
+| Gives the fix away (human) | 0/20, 2 borderline | **17/19** say the exact change in words |
+| Gives the fix away (keywords) | 0/20 | 5/19 |
+
+- **Level 1 works as intended** after making the server reject level-1 hints that aren't questions: every
+  hint asked about a telling input (`factorial(0)`, `[-5, -2]`, `'AEIOU'`, …) without naming the fix.
+- **Level 2 doesn't**: the prompt says not to spell out the exact change, but the model usually does, in plain
+  words. It's the student's second request, so this is a softer failure, but it's a real gap; the server
+  can't detect "too specific" reliably.
+- **Keyword scoring undercounts leaks** (5 vs 17 at level 2), so it's only a quick regression signal.
+- Limits: 20 cases, one run, free models (results vary between runs and models), and one reviewer who also
+  wrote the prompt.
 
 ## Demo data
 
