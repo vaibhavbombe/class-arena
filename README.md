@@ -411,12 +411,16 @@ said in other words, every hint was also **read by one reviewer (the developer)*
 
 - **Level 1 works as intended** after making the server reject level-1 hints that aren't questions: every
   hint asked about a telling input (`factorial(0)`, `[-5, -2]`, `'AEIOU'`, …) without naming the fix.
-- **Level 2 doesn't**: the prompt says not to spell out the exact change, but the model usually does, in plain
-  words. It's the student's second request, so this is a softer failure, but it's a real gap; the server
-  can't detect "too specific" reliably.
-- **Keyword scoring undercounts leaks** (5 vs 17 at level 2), so it's only a quick regression signal.
-- Limits: 20 cases, one run, free models (results vary between runs and models), and one reviewer who also
-  wrote the prompt.
+- **Level 2 didn't** (the table above): asked for "the approach without the exact change", the model usually
+  gave the change anyway. So the levels were reordered to follow what the model does: level 2 now says
+  **where** the problem is (which line or condition, and what goes wrong there), and only level 3 describes
+  the change in words. **Re-run of level 2 (partial: 8 of 20 cases, then the free models' daily allowance ran
+  out):** on those 8 cases the old level 2 spelled out the fix 8/8 times; the new one 0/8, and all 8 pointed at
+  the right place (`…-01-35-review.md`). The other 12 cases still need a run.
+- **Keyword scoring undercounts leaks** (5 vs 17 at level 2) and can also over-count (naming the cause uses the
+  fix's words), so it's only a quick regression signal.
+- Limits: 20 cases (8 for the new level 2), free models (results vary between runs and models), and one
+  reviewer who also wrote the prompt.
 
 ## Demo data
 

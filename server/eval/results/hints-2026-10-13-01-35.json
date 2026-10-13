@@ -1,0 +1,289 @@
+{
+  "models": [
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "google/gemma-4-26b-a4b-it:free"
+  ],
+  "levels": [
+    2
+  ],
+  "summary": [
+    {
+      "level": 2,
+      "cases": 20,
+      "aiAnswered": 8,
+      "questions": "0 (0%)",
+      "withCode": 0,
+      "onTarget": "8 (100%)",
+      "leaks": "2 (25%)"
+    }
+  ],
+  "rows": [
+    {
+      "case": "sum-reduce-no-initial",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The reduce method on line 2 is invoked without an initial value; when nums is an empty array, reduce has no starting point and throws a runtime error.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "empty"
+      ],
+      "leaks": [
+        "initial value"
+      ]
+    },
+    {
+      "case": "vowels-case-sensitive",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The regular expression /[aeiou]/g only looks for lowercase vowels, so any uppercase vowels in the string are not matched and therefore not counted.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "upper",
+        "case"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "largest-negatives",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The problem is in the line `return Math.max(0, ...nums)`. By always including 0 as an argument to Math.max, the function will return 0 whenever all numbers in the array are negative, which is not the correct largest value.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "negative"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "loop-off-by-one",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The loop condition on line 3 uses `i <= nums.length`, which causes the loop to run one extra time when `i` equals `nums.length`. On that final iteration it tries to read `nums[nums.length]`, which is undefined, making the sum incorrect.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "length",
+        "undefined"
+      ],
+      "leaks": [
+        "<="
+      ]
+    },
+    {
+      "case": "reverse-missing-join",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "Your function returns the result of .reverse(), which is an array of characters, not a string. That's why the output is not the expected reversed string.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "array",
+        "string",
+        "return"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "palindrome-case",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "invalid_json",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "factorial-zero",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The function's base case only checks for n === 1, so when factorial is called with 0 it never stops recursing, eventually causing a stack overflow.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "0"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "fizzbuzz-order",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The first condition (n % 3 === 0) is evaluated before the check for divisibility by 15, so numbers like 15 satisfy it and the function returns 'Fizz' before reaching the 'FizzBuzz' case.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "15"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "words-extra-spaces",
+      "level": 2,
+      "aiAnswered": true,
+      "reason": null,
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "hint": "The split(' ') call treats each single space as a separator, so consecutive spaces (or leading/trailing spaces) produce empty strings in the resulting array, which are then counted as words.",
+      "isQuestion": false,
+      "hasCode": false,
+      "onTarget": [
+        "empty",
+        "spaces",
+        "space"
+      ],
+      "leaks": []
+    },
+    {
+      "case": "dedupe-inverted",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "capitalize-duplicate",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "find-return-early",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "sort-lexicographic",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "isodd-negative",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "sum-digits-negative",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "flatten-push",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "char-count-nan",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "range-exclusive",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "average-integer",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    },
+    {
+      "case": "max-swapped",
+      "level": 2,
+      "aiAnswered": false,
+      "reason": "http_429",
+      "model": null,
+      "hint": null,
+      "isQuestion": null,
+      "hasCode": null,
+      "onTarget": null,
+      "leaks": null
+    }
+  ]
+}

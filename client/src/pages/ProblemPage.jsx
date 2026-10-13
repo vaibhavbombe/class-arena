@@ -50,7 +50,7 @@ function HintsCard({ problemId, hints, code, onHint }) {
         {next <= 3 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button onClick={ask} disabled={busy} style={ghostButtonStyle}>{busy ? 'Thinking…' : `💡 Get hint ${next} of 3`}</button>
-            <span style={{ fontSize: '0.78rem', color: colors.muted }}>{next === 1 ? 'A nudge first, then the approach, then a plan. Never code.' : next === 2 ? 'Next: the approach in words.' : 'Last: a step-by-step plan.'}</span>
+            <span style={{ fontSize: '0.78rem', color: colors.muted }}>{next === 1 ? 'A question first, then where the problem is, then the change in words. Never code.' : next === 2 ? 'Next: where the problem is.' : 'Last: the change, in words.'}</span>
           </div>
         ) : (
           <span style={{ fontSize: '0.8rem', color: colors.muted }}>You've used all 3 hints for this problem.</span>
