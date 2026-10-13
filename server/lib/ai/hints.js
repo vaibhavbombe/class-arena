@@ -1,7 +1,9 @@
 const { check } = require('./schema')
 
 // 3-level hints for coding practice. Pure functions, unit-tested in test/aiHints.test.js.
-//   1 = a nudge (what to think about)   2 = the approach in words   3 = a plan in plain steps
+//   1 = a question about a telling input   2 = where the problem is   3 = the change, in words
+// (Measured: when level 2 was "the approach", the model spelled out the fix 17 times in 19, so the
+// levels now follow that order instead: locate first, change last. See eval/results.)
 // Never code and never the answer: the prompt says so, and looksLikeSolution() rejects output
 // that contains code anyway, so the model is retried and then replaced by a fixed fallback.
 // The AI sees the prompt, samples, the student's code and latest verdict, but never hidden
@@ -18,8 +20,8 @@ const HINT_SCHEMA = {
 }
 const LEVEL_GUIDE = {
   1: 'Level 1 (nudge): ask the student ONE guiding question about how their code behaves, for example what it does for a particular input. Do not say what is wrong, do not name a fix, a method, a parameter or what to add or remove. One or two sentences, ending with a question.',
-  2: 'Level 2 (approach): explain the key idea or approach in one or two sentences of plain English. You may name the concept involved, but do not spell out the exact change to make.',
-  3: 'Level 3 (plan): give a short numbered plan of steps in plain English. Still no code, no code syntax, no variable declarations.',
+  2: 'Level 2 (where): point to the part of the student\'s code that causes the problem (which line, condition or method call) and say what goes wrong there, for example for the input from the first hint. Do NOT say how to change it, what to replace it with, or what to add or remove. One or two sentences.',
+  3: 'Level 3 (the change): describe in plain words what to change and why it fixes the problem. Still no code, no code syntax, no variable declarations.',
 }
 
 const json = (value) => JSON.stringify(value)

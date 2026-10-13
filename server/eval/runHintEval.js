@@ -18,6 +18,10 @@ const CASES = require('./hintCases')
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1] ?? fallback
 const LEVELS = arg('levels', '1').split(',').map(Number)
 const MOCK = process.argv.includes('--mock')
+// --previous=<results .json>: reuse that run's level-1 hints as "already given" when evaluating
+// only later levels (saves requests on rate-limited free models).
+const PREVIOUS = arg('previous', null)
+const earlier = PREVIOUS ? JSON.parse(fs.readFileSync(path.resolve(PREVIOUS), 'utf8')).rows : []
 const PAUSE_MS = Number(arg('pause', MOCK ? '0' : '4000')) // free models allow ~20 requests a minute
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const has = (text, words) => words.filter((w) => text.toLowerCase().includes(w.toLowerCase()))
@@ -38,7 +42,7 @@ const has = (text, words) => words.filter((w) => text.toLowerCase().includes(w.t
 
   const rows = []
   for (const c of CASES) {
-    const previous = []
+    const previous = earlier.filter((r) => r.case === c.id && r.hint && r.level < Math.min(...LEVELS)).sort((a, b) => a.level - b.level).map((r) => r.hint)
     for (const level of LEVELS) {
       const problem = { title: c.title, prompt: c.prompt, functionName: c.functionName, sampleTests: c.sampleTests }
       const result = await chatJSON({
@@ -89,7 +93,7 @@ const has = (text, words) => words.filter((w) => text.toLowerCase().includes(w.t
   const name = `${stamp}${MOCK ? '-mock' : ''}`
   const md = [
     `# Hint evaluation ${name}`, '',
-    `Models: ${config.models.join(', ')}. Levels: ${LEVELS.join(', ')}. ${CASES.length} cases (eval/hintCases.js).`,
+    `Models: ${config.models.join(', ')}. Levels: ${LEVELS.join(', ')}. ${CASES.length} cases (eval/hintCases.js).${PREVIOUS ? ` Earlier hints reused from ${path.basename(PREVIOUS)}.` : ''}`,
     'Scored by keywords (crude: may miss a paraphrased leak or flag an innocent word); every hint is listed below.', '',
     '| Level | Cases | AI answered | Questions | With code | On target | Leaks the fix |', '|---|---|---|---|---|---|---|',
     ...summary.map((s) => `| ${s.level} | ${s.cases} | ${s.aiAnswered} | ${s.questions} | ${s.withCode} | ${s.onTarget} | ${s.leaks} |`), '',
