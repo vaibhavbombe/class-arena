@@ -20,11 +20,12 @@ const isStaff = (req) => req.role === 'teacher' || req.role === 'admin'
 
 // A test is visible if its class is visible to the caller; students only see
 // published tests. Returns null (answered with 404) otherwise.
-async function findVisibleTest(req, testId) {
+// { read: true } only from endpoints that change nothing (see lib/classAccess.js).
+async function findVisibleTest(req, testId, { read = false } = {}) {
   if (!mongoose.isValidObjectId(testId)) return null
   const test = await Test.findOne({ _id: testId, institutionId: req.institutionId })
   if (!test) return null
-  const cls = await findVisibleClass(req, test.classId)
+  const cls = await findVisibleClass(req, test.classId, { read })
   if (!cls) return null
   if (!isStaff(req) && test.status !== 'published') return null
   return test
@@ -38,7 +39,7 @@ function questionFilter(req, ids) {
 }
 
 router.get('/', async (req, res) => {
-  const cls = await findVisibleClass(req, req.query.classId)
+  const cls = await findVisibleClass(req, req.query.classId, { read: true })
   if (!cls) return res.status(404).json({ error: 'Class not found' })
 
   const now = new Date()
@@ -84,7 +85,7 @@ router.post('/', requirePermission('tests.manage'), async (req, res) => {
 })
 
 router.get('/:id', async (req, res) => {
-  const test = await findVisibleTest(req, req.params.id)
+  const test = await findVisibleTest(req, req.params.id, { read: true })
   if (!test) return res.status(404).json({ error: 'Test not found' })
   res.json(isStaff(req) ? rules.staffDetail(test) : rules.studentOutline(test))
 })
@@ -173,7 +174,7 @@ async function finalizeOverdue(test, now) {
 // Every enrolled student (including those who never started) plus class statistics.
 router.get('/:id/results', requirePermission('results.view'), async (req, res) => {
   const now = new Date()
-  const test = await findVisibleTest(req, req.params.id)
+  const test = await findVisibleTest(req, req.params.id, { read: true })
   if (!test) return res.status(404).json({ error: 'Test not found' })
   await finalizeOverdue(test, now)
 
@@ -208,7 +209,7 @@ router.get('/:id/results', requirePermission('results.view'), async (req, res) =
 
 // One student's answers, marked. Staff can always see this.
 router.get('/:id/results/:studentId', requirePermission('results.view'), async (req, res) => {
-  const test = await findVisibleTest(req, req.params.id)
+  const test = await findVisibleTest(req, req.params.id, { read: true })
   if (!test) return res.status(404).json({ error: 'Test not found' })
   if (!mongoose.isValidObjectId(req.params.studentId)) return res.status(404).json({ error: 'Attempt not found' })
   await finalizeOverdue(test, new Date())

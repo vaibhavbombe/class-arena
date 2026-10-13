@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt')
 const crypto = require('crypto')
 const mongoose = require('mongoose')
 const User = require('../models/User')
+const Role = require('../models/Role')
 const Institution = require('../models/Institution')
 const Invite = require('../models/Invite')
 const Class = require('../models/Class')
@@ -35,12 +36,31 @@ router.get('/me', requireAuth, async (req, res) => {
 router.get('/members', requireAuth, requirePermission('members.view'), async (req, res) => {
   const filter = { institutionId: req.institutionId }
   if (User.ROLES.includes(req.query.role)) filter.role = req.query.role
-  const members = await User.find(filter).select('-passwordHash').sort({ role: 1, name: 1 })
-  res.json(members)
+  const members = await User.find(filter).select('-passwordHash').populate('customRoleId', 'name').sort({ role: 1, name: 1 })
+  // roleName: the custom role's name, or the built-in role.
+  res.json(members.map((m) => ({ ...m.toObject(), customRoleId: m.customRoleId?._id || null, roleName: m.customRoleId?.name || m.role })))
 })
 
 // Removes a member of the caller's institute. Deletes are ordered so the user goes
 // last: if something fails halfway, the admin can simply retry.
+// Gives a teacher a custom role (or back to the built-in teacher role with roleId: null).
+// Admin-only (roles.manage). Admins and students can't get custom roles.
+router.put('/members/:id/role', requireAuth, requirePermission('roles.manage'), async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Member not found' })
+  const member = await User.findOne({ _id: req.params.id, institutionId: req.institutionId })
+  if (!member) return res.status(404).json({ error: 'Member not found' })
+  if (member.role !== 'teacher') return res.status(400).json({ error: 'Only teachers can be given a custom role' })
+  const roleId = req.body?.roleId ?? null
+  let role = null
+  if (roleId !== null) {
+    role = mongoose.isValidObjectId(roleId) && await Role.findOne({ _id: roleId, institutionId: req.institutionId })
+    if (!role) return res.status(404).json({ error: 'Role not found' })
+  }
+  member.customRoleId = role ? role._id : null
+  await member.save()
+  res.json({ id: member._id, name: member.name, roleName: role ? role.name : 'teacher' })
+})
+
 router.delete('/members/:id', requireAuth, requirePermission('members.remove'), async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Member not found' })
   const member = await User.findOne({ _id: req.params.id, institutionId: req.institutionId })
