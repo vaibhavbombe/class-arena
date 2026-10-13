@@ -8,7 +8,7 @@ const Test = require('../models/Test')
 const Attempt = require('../models/Attempt')
 const LiveQuiz = require('../models/LiveQuiz')
 const User = require('../models/User')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requireRole, requirePermission } = require('../middleware/auth')
 const { rejectInvalid } = require('../lib/validate')
 const { normalizeJoinCode, withUniqueJoinCode } = require('../lib/joinCode')
 const { findVisibleClass } = require('../lib/classAccess')
@@ -40,7 +40,7 @@ function classSummary(cls, { teacher, studentCount, includeJoinCode }) {
   }
 }
 
-router.post('/', requireRole('teacher', 'admin'), async (req, res) => {
+router.post('/', requirePermission('classes.create'), async (req, res) => {
   if (rejectInvalid(res, req.body, ['name'])) return
   const subject = typeof req.body.subject === 'string' ? req.body.subject : ''
 
@@ -114,7 +114,7 @@ router.post('/join', requireRole('student'), async (req, res) => {
 })
 
 // Class analytics for its teacher and admins (see lib/analytics.js for what's computed).
-router.get('/:id/analytics', requireRole('teacher', 'admin'), async (req, res) => {
+router.get('/:id/analytics', requirePermission('analytics.view'), async (req, res) => {
   const cls = await findVisibleClass(req, req.params.id)
   if (!cls) return res.status(404).json({ error: 'Class not found' })
   const now = new Date()
@@ -178,7 +178,7 @@ router.get('/:id', async (req, res) => {
 })
 
 // If a code leaks (posted publicly, say), staff can replace it. Existing students stay enrolled.
-router.post('/:id/join-code', requireRole('teacher', 'admin'), async (req, res) => {
+router.post('/:id/join-code', requirePermission('classes.manage'), async (req, res) => {
   const cls = await findVisibleClass(req, req.params.id)
   if (!cls) return res.status(404).json({ error: 'Class not found' })
 
@@ -190,7 +190,7 @@ router.post('/:id/join-code', requireRole('teacher', 'admin'), async (req, res) 
 })
 
 // Admin hands a class to another teacher (e.g. before removing the current one).
-router.patch('/:id/teacher', requireRole('admin'), async (req, res) => {
+router.patch('/:id/teacher', requirePermission('classes.assign'), async (req, res) => {
   if (rejectInvalid(res, req.body, ['teacherId'])) return
   const cls = await findVisibleClass(req, req.params.id)
   if (!cls) return res.status(404).json({ error: 'Class not found' })
@@ -209,7 +209,7 @@ router.patch('/:id/teacher', requireRole('admin'), async (req, res) => {
 })
 
 // Staff remove one student from a class. The student's account stays.
-router.delete('/:id/students/:studentId', requireRole('teacher', 'admin'), async (req, res) => {
+router.delete('/:id/students/:studentId', requirePermission('classes.manage'), async (req, res) => {
   const cls = await findVisibleClass(req, req.params.id)
   if (!cls) return res.status(404).json({ error: 'Class not found' })
   if (!mongoose.isValidObjectId(req.params.studentId)) return res.status(404).json({ error: 'Student not found in this class' })
@@ -221,7 +221,7 @@ router.delete('/:id/students/:studentId', requireRole('teacher', 'admin'), async
 
 // The class's teacher or an admin deletes it. Its tests and enrollments go first, then the class,
 // so a failure halfway leaves nothing pointing at a missing class.
-router.delete('/:id', requireRole('teacher', 'admin'), async (req, res) => {
+router.delete('/:id', requirePermission('classes.manage'), async (req, res) => {
   const cls = await findVisibleClass(req, req.params.id)
   if (!cls) return res.status(404).json({ error: 'Class not found' })
 
