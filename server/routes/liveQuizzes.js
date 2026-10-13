@@ -2,14 +2,14 @@ const express = require('express')
 const mongoose = require('mongoose')
 const LiveQuiz = require('../models/LiveQuiz')
 const Question = require('../models/Question')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requirePermission } = require('../middleware/auth')
 const { findVisibleClass } = require('../lib/classAccess')
 const rules = require('../lib/liveQuizRules')
 
 // Quizzes contain correct answers, so authoring is staff-only. Students only ever see
 // questions during a game, without answers until the reveal (step 3.3).
 const router = express.Router()
-router.use(requireAuth, requireRole('teacher', 'admin'))
+router.use(requireAuth, requirePermission('live.host'))
 
 // A quiz in a class the caller can see (teachers: their classes; admins: any), or null.
 async function findVisibleQuiz(req, quizId) {

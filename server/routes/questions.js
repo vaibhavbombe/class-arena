@@ -2,7 +2,7 @@ const express = require('express')
 const mongoose = require('mongoose')
 const Question = require('../models/Question')
 const User = require('../models/User')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requirePermission } = require('../middleware/auth')
 const { parseQuestionInput, cleanCode } = require('../lib/questionInput')
 const { judgeCode } = require('../judge/queue')
 const generator = require('../lib/ai/generator')
@@ -14,7 +14,7 @@ const GENERATE = { perTeacherPerDay: 20, cooldownMs: 15000 }
 // The question bank holds correct answers, so the whole router is staff-only.
 // Students only ever see questions through test views that strip the answers.
 const router = express.Router()
-router.use(requireAuth, requireRole('teacher', 'admin'))
+router.use(requireAuth, requirePermission('questions.manage'))
 
 // Teachers see their own questions; admins see every question in the institute.
 function visibleFilter(req) {
@@ -71,7 +71,7 @@ router.post('/check-code', async (req, res) => {
 // AI drafts for the teacher to review. Nothing is saved here: the teacher edits a draft and
 // saves it through POST / like any other question. Coding drafts are checked by running the
 // AI's own reference solution against its tests in the judge.
-router.post('/generate', async (req, res) => {
+router.post('/generate', requirePermission('questions.generate'), async (req, res) => {
   const { request, error } = generator.parseRequest(req.body)
   if (error) return res.status(400).json({ error })
   if (!aiConfig().enabled) return res.status(503).json({ error: 'AI question generation is not set up on this server yet. You can still write questions by hand.' })

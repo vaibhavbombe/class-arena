@@ -5,7 +5,7 @@ const Question = require('../models/Question')
 const Attempt = require('../models/Attempt')
 const Enrollment = require('../models/Enrollment')
 const User = require('../models/User')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requirePermission } = require('../middleware/auth')
 const { findVisibleClass } = require('../lib/classAccess')
 const rules = require('../lib/testRules')
 const { GRACE_MS } = require('../lib/attemptRules')
@@ -73,7 +73,7 @@ router.get('/', async (req, res) => {
 })
 
 // Creates an empty draft in a class the caller teaches (or any class, for admins).
-router.post('/', requireRole('teacher', 'admin'), async (req, res) => {
+router.post('/', requirePermission('tests.manage'), async (req, res) => {
   const cls = await findVisibleClass(req, req.body?.classId)
   if (!cls) return res.status(404).json({ error: 'Class not found' })
 
@@ -89,7 +89,7 @@ router.get('/:id', async (req, res) => {
   res.json(isStaff(req) ? rules.staffDetail(test) : rules.studentOutline(test))
 })
 
-router.put('/:id', requireRole('teacher', 'admin'), async (req, res) => {
+router.put('/:id', requirePermission('tests.manage'), async (req, res) => {
   const test = await findVisibleTest(req, req.params.id)
   if (!test) return res.status(404).json({ error: 'Test not found' })
   const body = req.body ?? {}
@@ -128,7 +128,7 @@ router.put('/:id', requireRole('teacher', 'admin'), async (req, res) => {
 
 // Publishing refreshes each copy from the bank one last time (if the question still
 // exists), then locks questions, points and timing.
-router.post('/:id/publish', requireRole('teacher', 'admin'), async (req, res) => {
+router.post('/:id/publish', requirePermission('tests.manage'), async (req, res) => {
   const test = await findVisibleTest(req, req.params.id)
   if (!test) return res.status(404).json({ error: 'Test not found' })
   if (test.status === 'published') return res.status(409).json({ error: 'This test is already published' })
@@ -149,7 +149,7 @@ router.post('/:id/publish', requireRole('teacher', 'admin'), async (req, res) =>
 
 // Release results before the test closes, or hide them again (they always become
 // visible once the test closes).
-router.post('/:id/release', requireRole('teacher', 'admin'), async (req, res) => {
+router.post('/:id/release', requirePermission('results.release'), async (req, res) => {
   const test = await findVisibleTest(req, req.params.id)
   if (!test) return res.status(404).json({ error: 'Test not found' })
   if (test.status !== 'published') return res.status(409).json({ error: 'Publish the test first' })
@@ -171,7 +171,7 @@ async function finalizeOverdue(test, now) {
 }
 
 // Every enrolled student (including those who never started) plus class statistics.
-router.get('/:id/results', requireRole('teacher', 'admin'), async (req, res) => {
+router.get('/:id/results', requirePermission('results.view'), async (req, res) => {
   const now = new Date()
   const test = await findVisibleTest(req, req.params.id)
   if (!test) return res.status(404).json({ error: 'Test not found' })
@@ -207,7 +207,7 @@ router.get('/:id/results', requireRole('teacher', 'admin'), async (req, res) => 
 })
 
 // One student's answers, marked. Staff can always see this.
-router.get('/:id/results/:studentId', requireRole('teacher', 'admin'), async (req, res) => {
+router.get('/:id/results/:studentId', requirePermission('results.view'), async (req, res) => {
   const test = await findVisibleTest(req, req.params.id)
   if (!test) return res.status(404).json({ error: 'Test not found' })
   if (!mongoose.isValidObjectId(req.params.studentId)) return res.status(404).json({ error: 'Attempt not found' })
@@ -220,7 +220,7 @@ router.get('/:id/results/:studentId', requireRole('teacher', 'admin'), async (re
   res.json({ student: student && { id: student._id, name: student.name, email: student.email }, ...reviewView(test, attempt) })
 })
 
-router.delete('/:id', requireRole('teacher', 'admin'), async (req, res) => {
+router.delete('/:id', requirePermission('tests.manage'), async (req, res) => {
   const test = await findVisibleTest(req, req.params.id)
   if (!test) return res.status(404).json({ error: 'Test not found' })
   // Students' work would be lost; a test that has been taken stays.

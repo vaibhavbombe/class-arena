@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   institutionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Institution', required: true },
   role: { type: String, enum: ROLES, required: true },
+  // Teachers only: a custom role (models/Role.js) replaces the built-in teacher permissions.
+  customRoleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', default: null },
   createdAt: { type: Date, default: Date.now },
 })
 

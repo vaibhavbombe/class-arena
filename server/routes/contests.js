@@ -5,7 +5,7 @@ const ContestSubmission = require('../models/ContestSubmission')
 const Question = require('../models/Question')
 const Enrollment = require('../models/Enrollment')
 const User = require('../models/User')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requireRole, requirePermission } = require('../middleware/auth')
 const { findVisibleClass } = require('../lib/classAccess')
 const { getRedis } = require('../lib/redis')
 const rules = require('../lib/contestRules')
@@ -21,7 +21,7 @@ router.use(requireAuth)
 
 onJudgeResult(contests.finalizeContestSubmission)
 
-const staffOnly = requireRole('teacher', 'admin')
+const staffOnly = requirePermission('coding.manage')
 const SUBMIT_COOLDOWN_MS = 5000
 const notStarted = (contest) => ['draft', 'upcoming'].includes(rules.contestStatus(contest))
 

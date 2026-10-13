@@ -5,7 +5,7 @@ const CodeSubmission = require('../models/CodeSubmission')
 const Question = require('../models/Question')
 const User = require('../models/User')
 const Hint = require('../models/Hint')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requireRole, requirePermission } = require('../middleware/auth')
 const { findVisibleClass } = require('../lib/classAccess')
 const { getRedis } = require('../lib/redis')
 const views = require('../lib/problemViews')
@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
 })
 
 // Assign a coding question from the bank to a class (copied, hidden tests included).
-router.post('/', requireRole('teacher', 'admin'), async (req, res) => {
+router.post('/', requirePermission('coding.manage'), async (req, res) => {
   const cls = await findVisibleClass(req, req.body?.classId)
   if (!cls) return res.status(404).json({ error: 'Class not found' })
   if (!mongoose.isValidObjectId(req.body.questionId)) return res.status(404).json({ error: 'Question not found' })
@@ -122,7 +122,7 @@ router.get('/:id', async (req, res) => {
   res.json({ ...views.staffProblemView(problem), students: [...byStudent.values()].sort((a, b) => Number(b.solved) - Number(a.solved) || a.name.localeCompare(b.name)) })
 })
 
-router.delete('/:id', requireRole('teacher', 'admin'), async (req, res) => {
+router.delete('/:id', requirePermission('coding.manage'), async (req, res) => {
   const problem = await findVisibleProblem(req, req.params.id)
   if (!problem) return res.status(404).json({ error: 'Problem not found' })
   await CodeSubmission.deleteMany({ problemId: problem._id })

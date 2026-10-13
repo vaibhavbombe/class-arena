@@ -197,6 +197,7 @@ async function snapshot(game, studentId) {
 
 async function canHost(identity, game) {
   if (game.institutionId.toString() !== identity.institutionId) return false
+  if (!identity.permissions?.includes('live.host')) return false
   if (identity.role === 'admin') return true
   if (identity.role !== 'teacher') return false
   return Boolean(await Class.exists({ _id: game.classId, teacherId: identity.userId }))

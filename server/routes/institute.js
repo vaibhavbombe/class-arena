@@ -15,7 +15,7 @@ const Attempt = require('../models/Attempt')
 const CodeSubmission = require('../models/CodeSubmission')
 const ContestSubmission = require('../models/ContestSubmission')
 const Hint = require('../models/Hint')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requirePermission } = require('../middleware/auth')
 const { authResponse, publicUser } = require('../lib/tokens')
 const { rejectInvalid } = require('../lib/validate')
 const { sendMail } = require('../lib/mailer')
@@ -26,12 +26,13 @@ const router = express.Router()
 router.get('/me', requireAuth, async (req, res) => {
   const user = await User.findById(req.userId)
   const institution = await Institution.findById(req.institutionId)
-  res.json({ user: publicUser(user), institution: { id: institution._id, name: institution.name } })
+  // permissions only decide what the UI shows; the server checks them on every request.
+  res.json({ user: publicUser(user), institution: { id: institution._id, name: institution.name }, roleName: req.roleName, permissions: req.permissions })
 })
 
 // Only ever returns users from the caller's own institute (req.institutionId
 // comes from the verified token, never from anything the client sends).
-router.get('/members', requireAuth, requireRole('admin'), async (req, res) => {
+router.get('/members', requireAuth, requirePermission('members.view'), async (req, res) => {
   const filter = { institutionId: req.institutionId }
   if (User.ROLES.includes(req.query.role)) filter.role = req.query.role
   const members = await User.find(filter).select('-passwordHash').sort({ role: 1, name: 1 })
@@ -40,11 +41,13 @@ router.get('/members', requireAuth, requireRole('admin'), async (req, res) => {
 
 // Removes a member of the caller's institute. Deletes are ordered so the user goes
 // last: if something fails halfway, the admin can simply retry.
-router.delete('/members/:id', requireAuth, requireRole('admin'), async (req, res) => {
+router.delete('/members/:id', requireAuth, requirePermission('members.remove'), async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Member not found' })
   const member = await User.findOne({ _id: req.params.id, institutionId: req.institutionId })
   if (!member) return res.status(404).json({ error: 'Member not found' })
 
+  // No privilege escalation: only admins can remove admins (members.remove can be delegated).
+  if (member.role === 'admin' && req.role !== 'admin') return res.status(403).json({ error: 'Only admins can remove admins' })
   // Keeps an institute from ending up with no admin.
   if (member._id.toString() === req.userId) {
     return res.status(400).json({ error: "You can't remove yourself" })
@@ -69,9 +72,11 @@ router.delete('/members/:id', requireAuth, requireRole('admin'), async (req, res
 })
 
 // Admins invite teachers (or co-admins). Students never need an invite.
-router.post('/invites', requireAuth, requireRole('admin'), async (req, res) => {
+router.post('/invites', requireAuth, requirePermission('members.invite'), async (req, res) => {
   if (rejectInvalid(res, req.body, ['email'])) return
   const email = req.body.email.toLowerCase().trim()
+  // No privilege escalation: only admins can invite admins (members.invite can be delegated).
+  if (req.body.role === 'admin' && req.role !== 'admin') return res.status(403).json({ error: 'Only admins can invite admins' })
   const role = req.body.role === 'admin' ? 'admin' : 'teacher'
 
   const existing = await User.findOne({ email })

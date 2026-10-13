@@ -2,7 +2,7 @@ const express = require('express')
 const mongoose = require('mongoose')
 const LiveGame = require('../models/LiveGame')
 const LiveQuiz = require('../models/LiveQuiz')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requirePermission } = require('../middleware/auth')
 const { findVisibleClass } = require('../lib/classAccess')
 const store = require('../lib/liveGameStore')
 const { generatePin } = require('../lib/liveGameRules')
@@ -11,10 +11,9 @@ const { generatePin } = require('../lib/liveGameRules')
 const router = express.Router()
 router.use(requireAuth)
 
-const isStaff = (req) => req.role === 'teacher' || req.role === 'admin'
 
 // Creates a game from a quiz: copies the questions (with the answer key) and reserves a PIN.
-router.post('/', requireRole('teacher', 'admin'), async (req, res) => {
+router.post('/', requirePermission('live.host'), async (req, res) => {
   const quizId = req.body?.quizId
   if (!mongoose.isValidObjectId(quizId)) return res.status(404).json({ error: 'Live quiz not found' })
   const quiz = await LiveQuiz.findOne({ _id: quizId, institutionId: req.institutionId })
@@ -51,7 +50,7 @@ router.get('/active', async (req, res) => {
 })
 
 // Past games of a quiz, newest first (staff).
-router.get('/', requireRole('teacher', 'admin'), async (req, res) => {
+router.get('/', requirePermission('live.host'), async (req, res) => {
   if (!mongoose.isValidObjectId(req.query.quizId)) return res.status(404).json({ error: 'Live quiz not found' })
   const quiz = await LiveQuiz.findOne({ _id: req.query.quizId, institutionId: req.institutionId })
   if (!quiz || !(await findVisibleClass(req, quiz.classId))) return res.status(404).json({ error: 'Live quiz not found' })
@@ -66,7 +65,7 @@ router.get('/', requireRole('teacher', 'admin'), async (req, res) => {
 
 // Full results of an ended game (staff of the class).
 router.get('/:id', async (req, res) => {
-  if (!isStaff(req)) return res.status(403).json({ error: 'You do not have permission to do this' })
+  if (!req.permissions.includes('live.host')) return res.status(403).json({ error: 'You do not have permission to do this' })
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Game not found' })
   const game = await LiveGame.findOne({ _id: req.params.id, institutionId: req.institutionId })
   if (!game || !(await findVisibleClass(req, game.classId))) return res.status(404).json({ error: 'Game not found' })
