@@ -7,7 +7,8 @@ const RefreshToken = require('../models/RefreshToken')
 const Class = require('../models/Class')
 const Enrollment = require('../models/Enrollment')
 const PasswordReset = require('../models/PasswordReset')
-const { signAccessToken, issueRefreshToken, authResponse } = require('../lib/tokens')
+const { signAccessToken, signMfaToken, verifyMfaToken, issueRefreshToken, authResponse } = require('../lib/tokens')
+const { consumeSecondFactor } = require('../lib/mfa')
 const { setRefreshCookie, clearRefreshCookie, readRefreshCookie } = require('../lib/authCookie')
 const { rejectInvalid } = require('../lib/validate')
 const { normalizeJoinCode } = require('../lib/joinCode')
@@ -109,7 +110,31 @@ router.post('/login', limitRequests(LIMITS.login.perIp), async (req, res) => {
   }
   await clear(failures[0].name, failures[0].id)
 
+  // With two-factor login on, the password alone isn't enough: no session yet, only a 5-minute
+  // token for the code step (POST /login/mfa).
+  if (user.mfa?.enabled) return res.json({ mfaRequired: true, mfaToken: signMfaToken(user) })
+
   res.json(await authResponse(user, res))
+})
+
+// Second step of login: the code from the authenticator app (or a one-time recovery code).
+router.post('/login/mfa', limitRequests(LIMITS.login.perIp), async (req, res) => {
+  const userId = verifyMfaToken(req.body?.mfaToken)
+  if (!userId) return res.status(401).json({ error: 'The login step expired. Please log in again.' })
+  const user = await User.findById(userId)
+  if (!user || !user.mfa?.enabled) return res.status(401).json({ error: 'The login step expired. Please log in again.' })
+
+  const wrongCodes = [{ ...LIMITS.mfa.wrongCodesPerUser, id: userId }]
+  const wait = await blockedBy(wrongCodes)
+  if (wait) return tooMany(res, wait, 'Too many wrong codes.')
+  const result = await consumeSecondFactor(user, req.body?.code)
+  if (!result.ok) {
+    await recordFailure(wrongCodes)
+    return res.status(400).json({ error: "That code isn't right. Use the newest code from your app, or a recovery code." })
+  }
+  await clear(wrongCodes[0].name, wrongCodes[0].id)
+  const remaining = result.kind === 'recovery' ? (await User.findById(userId).select('mfa.recoveryCodes')).mfa.recoveryCodes.length : undefined
+  res.json({ ...(await authResponse(user, res)), ...(remaining !== undefined && { recoveryCodesLeft: remaining }) })
 })
 
 router.post('/refresh', limitRequests(LIMITS.refresh.perIp), async (req, res) => {

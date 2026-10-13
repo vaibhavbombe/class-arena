@@ -45,6 +45,33 @@ const { run, PW, call, check, invite, connectTestDb, finish } = require('./helpe
   const after = await User.findById(T.user.id).lean()
   check('a current recovery code turns it off and wipes the secret and codes', off.s === 200 && after.mfa.enabled === false && after.mfa.secret === null && after.mfa.recoveryCodes.length === 0, after.mfa)
 
+  // Logging in with 2FA on: password first, then a code, and only then a session.
+  const L = await invite(A.accessToken, 'mfa-login-')
+  const lSetup = (await mfa('/setup', { password: PW }, L.accessToken)).d
+  const lCodes = (await mfa('/enable', { code: totp.generate(lSetup.secret) }, L.accessToken)).d.recoveryCodes
+  const login = () => call('POST', '/api/auth/login', { email: L.user.email, password: PW })
+  const step = (body) => call('POST', '/api/auth/login/mfa', body)
+
+  const half = await login()
+  check('the password alone gives no session: mfaRequired, no access token, no cookie', half.s === 200 && half.d.mfaRequired === true && typeof half.d.mfaToken === 'string' && !half.d.accessToken && !half.d.user && half.refresh === null, half.d)
+  check('a wrong password still gets the usual 401 (no hint that 2FA is on)', (await call('POST', '/api/auth/login', { email: L.user.email, password: 'Wrong-pass1!' })).s === 401, null)
+  check('the halfway token is not an access token', (await call('GET', '/api/me', null, half.d.mfaToken)).s === 401, null)
+  check('an access token is not a halfway token', (await step({ mfaToken: L.accessToken, code: nextStep(lSetup.secret) })).s === 401, null)
+  check('a missing or tampered halfway token is refused', (await step({ code: '123456' })).s === 401 && (await step({ mfaToken: half.d.mfaToken.slice(0, -2) + 'xx', code: '123456' })).s === 401, null)
+  check('a wrong code is refused without a session', (await step({ mfaToken: half.d.mfaToken, code: '000000' })).s === 400, null)
+
+  const codeNow = nextStep(lSetup.secret)
+  const full = await step({ mfaToken: half.d.mfaToken, code: codeNow })
+  check('the right code completes the login: access token, user and the refresh cookie', full.s === 200 && typeof full.d.accessToken === 'string' && full.d.user?.email === L.user.email && full.refresh !== null, full.d)
+  check('the new access token works', (await call('GET', '/api/me', null, full.d.accessToken)).s === 200, null)
+  check('refresh with the new cookie works (no second code needed)', (await call('POST', '/api/auth/refresh', null, null, { cookie: full.refresh })).s === 200, null)
+  check('the same code cannot log in twice (no replay)', (await step({ mfaToken: (await login()).d.mfaToken, code: codeNow })).s === 400, null)
+
+  const byRecovery = await step({ mfaToken: (await login()).d.mfaToken, code: lCodes[0] })
+  check('a recovery code logs in and says how many are left', byRecovery.s === 200 && byRecovery.d.accessToken && byRecovery.d.recoveryCodesLeft === 9, byRecovery.d)
+  check('...and works only once', (await step({ mfaToken: (await login()).d.mfaToken, code: lCodes[0] })).s === 400, null)
+  check('a user without 2FA logs in in one step as before', (await call('POST', '/api/auth/login', { email: A.user.email, password: PW })).d.accessToken !== undefined, null)
+
   // Wrong codes are rate-limited per user (rate limits are off in this API instance, so this
   // only checks the response stays a plain refusal; the limit itself is covered in rateLimits).
   check('wrong codes are refused with a plain message', (await mfa('/enable', { code: '123456' })).s === 400, null)
