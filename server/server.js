@@ -44,6 +44,7 @@ app.get('/api/health', async (req, res) => res.json({
   aiLastError: lastAiFailure() || undefined, // reason code + time only
 }))
 
+app.use('/api/auth/mfa', require('./routes/mfa'))
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/classes', require('./routes/classes'))
 app.use('/api/questions', require('./routes/questions'))
