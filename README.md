@@ -321,6 +321,8 @@ Server environment variables:
 | `PORT` | Defaults to 5002 |
 
 ## Testing
+To test by hand, follow [docs/manual-testing.md](docs/manual-testing.md) (every feature, step by step, with what you should see).
+
 - **Unit tests** (`npm test`, 119 tests, Node's built-in runner): the pure logic — question validation,
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, contest ranking (penalties, ties, first solves, the freeze), the AI client (schema checks, retry, timeouts, no retry on 401, the key never logged) and hint rules (code detection, prompt contents, fallbacks), the question generator's validation, feedback rules, and the code judge (every verdict,
