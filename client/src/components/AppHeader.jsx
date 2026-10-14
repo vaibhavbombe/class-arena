@@ -58,6 +58,7 @@ export default function AppHeader({ me }) {
         <NavLink to="/dashboard" style={navLinkStyle}>Classes</NavLink>
         {!isStaff && <NavLink to="/play" style={navLinkStyle}>▶ Join a live game</NavLink>}
         {can(me, 'questions.manage') && <NavLink to="/questions" style={navLinkStyle}>Question bank</NavLink>}
+        <NavLink to="/security" style={navLinkStyle}>Security</NavLink>
       </nav>
     </header>
   )

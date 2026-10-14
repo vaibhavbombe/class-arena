@@ -145,6 +145,31 @@ Password for all: `Demo-Arena1!`
 - [ ] **Security headers:** Network → the main document request → Response headers include
   `Content-Security-Policy`.
 
+## 12. Two-factor login (2FA)
+
+You need an authenticator app on your phone (Google Authenticator, Microsoft Authenticator, 1Password…). Use
+**your own** account, not a demo account: turning 2FA on for a demo account would lock other visitors out.
+
+- [ ] **Turn it on.** Header → **Security** → enter your password → **Set up two-factor login** → a QR code
+  appears. Scan it with the app (or type in the key shown under it) → enter the 6-digit code → **Turn on**.
+- [ ] **Recovery codes.** 10 codes appear once → **Download** (or **Copy**) and keep the file → **I've saved
+  them** → the page shows "On since …" and "10 of 10 recovery codes left".
+- [ ] **Badge.** As an admin, the members list shows **2FA** next to that person's name.
+- [ ] **Login asks for a code.** Log out → log in with email and password → the page says **Enter your code**
+  (you are not logged in yet). Type `000000` → "That code isn't right". Type the code from the app → dashboard.
+- [ ] **A code works once.** Log out and log in again within the same 30 seconds with the **same** code → refused.
+  Wait for the next code → it works.
+- [ ] **Recovery code.** Log out → password → enter one of the recovery codes instead → dashboard. Security page
+  → "9 of 10 recovery codes left". The same recovery code a second time → refused.
+- [ ] **The code step expires.** Enter the password, wait more than 5 minutes, then enter a code → "The login
+  step expired. Please log in again." and you're back at the password.
+- [ ] **New recovery codes.** Security → **New recovery codes** → enter a code from the app → 10 new codes; an old
+  one no longer works.
+- [ ] **Turn it off.** Security → **Turn off** → password + a code → "Two-factor login is off". The next login
+  asks only for the password.
+- [ ] **Not readable from the network (optional, F12 → Network).** After the password, the `login` response has
+  `mfaRequired` and an `mfaToken` but **no** `accessToken`, and Application → Cookies has **no** `ca_rt` yet.
+
 ---
 
 **If something looks wrong:** note the page, what you clicked, and what you saw (a screenshot helps). If the
