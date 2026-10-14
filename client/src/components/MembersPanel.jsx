@@ -5,13 +5,15 @@ import { can } from '../permissions.js'
 import { buttonStyle, cellStyle, colors, ghostButtonStyle, inlineFormStyle, inputStyle, messageStyle, sectionTitleStyle, tableWrapStyle } from '../styles.js'
 
 // Everyone in the institute (members.view), the invite form (members.invite), removing
-// members (members.remove) and giving teachers a custom role (roles.manage, admins only).
+// members (members.remove), giving teachers a custom role (roles.manage, admins only) and resetting
+// a member's two-factor login when they've lost their phone and recovery codes (security.manage).
 export default function MembersPanel({ me, rolesVersion = 0 }) {
   const currentUserId = me.user.id
   const isAdmin = me.user.role === 'admin'
   const canInvite = can(me, 'members.invite')
   const canRemove = can(me, 'members.remove')
   const canAssign = can(me, 'roles.manage')
+  const canResetMfa = can(me, 'security.manage')
   const [members, setMembers] = useState([])
   const [roles, setRoles] = useState([])
   const [roleFilter, setRoleFilter] = useState('')
@@ -20,6 +22,7 @@ export default function MembersPanel({ me, rolesVersion = 0 }) {
   const [inviteMsg, setInviteMsg] = useState(null)
   const [sending, setSending] = useState(false)
   const [removeMsg, setRemoveMsg] = useState(null)
+  const [mfaReset, setMfaReset] = useState(null) // { member, password } while confirming a reset
 
   function loadMembers() {
     api.get('/api/members', { params: roleFilter ? { role: roleFilter } : {} })
@@ -41,6 +44,19 @@ export default function MembersPanel({ me, rolesVersion = 0 }) {
       loadMembers()
     } catch (requestError) {
       setRemoveMsg({ ok: false, text: errorMessage(requestError, 'Could not change the role.') })
+    }
+  }
+
+  async function resetMfa(event) {
+    event.preventDefault()
+    setRemoveMsg(null)
+    try {
+      const response = await api.post(`/api/members/${mfaReset.member._id}/mfa-reset`, { password: mfaReset.password })
+      setMfaReset(null)
+      setRemoveMsg({ ok: true, text: response.data.message })
+      loadMembers()
+    } catch (requestError) {
+      setRemoveMsg({ ok: false, text: errorMessage(requestError, 'Could not reset two-factor login.') })
     }
   }
 
@@ -123,8 +139,15 @@ export default function MembersPanel({ me, rolesVersion = 0 }) {
                 <td style={{ ...cellStyle, textAlign: 'right' }}>
                   {member._id === currentUserId ? (
                     <span style={{ color: colors.muted }}>you</span>
-                  ) : !canRemove || (member.role === 'admin' && !isAdmin) ? null : (
-                    <button onClick={() => removeMember(member)} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>Remove</button>
+                  ) : (
+                    <span style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                      {canResetMfa && member.mfaEnabled && (
+                        <button onClick={() => { setRemoveMsg(null); setMfaReset({ member, password: '' }) }} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>Reset 2FA</button>
+                      )}
+                      {canRemove && !(member.role === 'admin' && !isAdmin) && (
+                        <button onClick={() => removeMember(member)} style={{ ...ghostButtonStyle, padding: '0.2rem 0.6rem' }}>Remove</button>
+                      )}
+                    </span>
                   )}
                 </td>
               </tr>
@@ -132,6 +155,17 @@ export default function MembersPanel({ me, rolesVersion = 0 }) {
           </tbody>
         </table>
       </div>
+      {mfaReset && (
+        <form onSubmit={resetMfa} style={inlineFormStyle}>
+          <p style={{ margin: 0, width: '100%', fontSize: '0.85rem' }}>
+            Reset two-factor login for <strong>{mfaReset.member.name}</strong>? Only do this if you've confirmed it's really
+            them. They'll be signed out everywhere and can set it up again.
+          </p>
+          <input type="password" required value={mfaReset.password} onChange={(event) => setMfaReset({ ...mfaReset, password: event.target.value })} placeholder="Your password" autoComplete="current-password" style={inputStyle} />
+          <button type="submit" style={buttonStyle}>Reset 2FA</button>
+          <button type="button" onClick={() => setMfaReset(null)} style={ghostButtonStyle}>Cancel</button>
+        </form>
+      )}
       {removeMsg && <p role="status" style={messageStyle(removeMsg.ok)}>{removeMsg.text}</p>}
 
       {canInvite && <>

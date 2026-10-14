@@ -174,6 +174,9 @@ You need an authenticator app on your phone (Google Authenticator, Microsoft Aut
   → after **I've saved them** you reach the dashboard. The **Turn off** button is gone ("Required by your
   institute"). Students log in as before.
 - [ ] **Switch the policy off** again as the admin → the teacher can turn 2FA off.
+- [ ] **Admin reset ("I lost my phone and my codes").** Teacher with 2FA on. Admin → members list → **Reset 2FA**
+  on that row → a wrong password is refused; your own password → "Two-factor login was reset…", the **2FA** badge
+  disappears. The teacher is signed out (on their next page load or within 15 minutes) and logs in with the password only.
 - [ ] **Not readable from the network (optional, F12 → Network).** After the password, the `login` response has
   `mfaRequired` and an `mfaToken` but **no** `accessToken`, and Application → Cookies has **no** `ca_rt` yet.
 

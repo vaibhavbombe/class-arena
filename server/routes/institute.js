@@ -116,6 +116,28 @@ router.delete('/members/:id', requireAuth, requirePermission('members.remove'), 
   res.json({ message: `${member.name} was removed` })
 })
 
+// For a member who lost both their phone and their recovery codes. The admin confirms with their own
+// password (a moment at an unlocked browser isn't enough). The member is signed out everywhere, in case
+// someone else has their phone; if the institute requires 2FA they'll set it up again at their next login.
+router.post('/members/:id/mfa-reset', requireAuth, requirePermission('security.manage'), async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Member not found' })
+  const member = await User.findOne({ _id: req.params.id, institutionId: req.institutionId }).select('name mfa.enabled')
+  if (!member) return res.status(404).json({ error: 'Member not found' })
+  if (member._id.toString() === req.userId) return res.status(400).json({ error: 'Use the Security page for your own account' })
+  if (!member.mfa?.enabled) return res.status(409).json({ error: `${member.name} doesn't have two-factor login on` })
+
+  const admin = await User.findById(req.userId).select('passwordHash')
+  const password = req.body?.password
+  if (typeof password !== 'string' || !password || !(await bcrypt.compare(password, admin.passwordHash))) {
+    return res.status(400).json({ error: 'Your password is not correct' })
+  }
+
+  await User.updateOne({ _id: member._id }, { $set: { 'mfa.enabled': false, 'mfa.secret': null, 'mfa.pendingSecret': null, 'mfa.lastStep': -1, 'mfa.recoveryCodes': [], 'mfa.enabledAt': null } })
+  await RefreshToken.deleteMany({ userId: member._id })
+  console.info(`2FA reset: member ${member._id} by admin ${req.userId} (institute ${req.institutionId})`)
+  res.json({ message: `Two-factor login was reset for ${member.name}. They've been signed out and can set it up again.` })
+})
+
 // Admins invite teachers (or co-admins). Students never need an invite.
 router.post('/invites', requireAuth, requirePermission('members.invite'), async (req, res) => {
   if (rejectInvalid(res, req.body, ['email'])) return

@@ -209,10 +209,10 @@ Each is *problem → how I found it → fix → proof*. Details in [engineering-
 
 - **Unit tests (140):** pure logic: grading, attempt rules, ranking, analytics, AI validation, the judge
   (every verdict, escape attempts, limits that can't be raised), TOTP against the RFC test vectors.
-- **Integration tests (26 suites, 417 checks):** a real API and database over HTTP and Socket.io: tenant isolation, roles,
+- **Integration tests (26 suites, 425 checks):** a real API and database over HTTP and Socket.io: tenant isolation, roles,
   races (simultaneous starts, autosave vs submit, simultaneous answers), the judge, contests, AI against a
   **fake AI server** (no cost, deterministic failures), rate limits on a second API with limits switched on.
-- **Browser tests (10, Playwright):** run against the **production build with the production headers**, so the
+- **Browser tests (11, Playwright):** run against the **production build with the production headers**, so the
   CSP is tested too; any CSP violation fails a test.
 - **CI (GitHub Actions):** all three layers on every push, with MongoDB and Redis as throwaway containers and no
   secrets. Failing unit tests appear as public annotations.
@@ -402,8 +402,12 @@ stop lock-outs and loopholes: an admin needs 2FA on before switching it on, and 
 turn 2FA off.
 
 **Q: What if a user loses their phone?**
-They use one of 10 one-time recovery codes, then set 2FA up again. If they lost both, today they're locked out;
-the next step is an admin reset with an audit log entry.
+They use one of 10 one-time recovery codes, then set 2FA up again. If they lost both, an admin resets it from the
+member list. The admin re-enters their own password (so a moment at an unlocked browser isn't enough), the reset
+only works inside the admin's institute and not on their own account, and the member is signed out everywhere,
+in case someone else has the phone. The weak point is the human step: the admin has to confirm who is asking,
+outside the app, which is exactly how account-recovery attacks work. The reset is logged on the server; a proper
+audit log page would be the next step.
 
 ### System design follow-ups
 
@@ -438,8 +442,8 @@ they can be safely retried. For heavy cross-entity reporting I'd consider Postgr
 - Live games run on one instance (no Socket.io adapter yet).
 - Styles in the CSP still allow inline (React style attributes).
 - AI: level-2 hint re-run measured on 8 of 20 cases; reviews and generated questions not evaluated.
-- 2FA can be required for staff but not students; there's no admin reset for a member who lost both phone
-  and recovery codes, and no passkeys/WebAuthn.
+- 2FA can be required for staff but not students; admin resets go to the server log only (no audit log page);
+  no passkeys/WebAuthn.
 - Next: Redis near the API, more judge workers, the Socket.io Redis adapter, contest pause/extend/rejudge,
   deletes in database transactions.
 
