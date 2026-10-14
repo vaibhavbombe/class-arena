@@ -49,6 +49,12 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+    // The institute requires 2FA for staff and this user hasn't set it up: the server refuses
+    // everything else, so go to the Security page (the server is what enforces it).
+    if (error.response?.data?.code === 'MFA_SETUP_REQUIRED' && window.location.pathname !== '/security') {
+      window.location.assign('/security')
+      return Promise.reject(error)
+    }
     if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
       return Promise.reject(error)
     }

@@ -209,10 +209,10 @@ Each is *problem → how I found it → fix → proof*. Details in [engineering-
 
 - **Unit tests (140):** pure logic: grading, attempt rules, ranking, analytics, AI validation, the judge
   (every verdict, escape attempts, limits that can't be raised), TOTP against the RFC test vectors.
-- **Integration tests (25 suites, 399 checks):** a real API and database over HTTP and Socket.io: tenant isolation, roles,
+- **Integration tests (26 suites, 417 checks):** a real API and database over HTTP and Socket.io: tenant isolation, roles,
   races (simultaneous starts, autosave vs submit, simultaneous answers), the judge, contests, AI against a
   **fake AI server** (no cost, deterministic failures), rate limits on a second API with limits switched on.
-- **Browser tests (9, Playwright):** run against the **production build with the production headers**, so the
+- **Browser tests (10, Playwright):** run against the **production build with the production headers**, so the
   CSP is tested too; any CSP violation fails a test.
 - **CI (GitHub Actions):** all three layers on every push, with MongoDB and Redis as throwaway containers and no
   secrets. Failing unit tests appear as public annotations.
@@ -346,7 +346,7 @@ secret, because trusting a header based on its shape would be spoofable.
 **Q: How do permissions work?**
 I separated *who you are* from *what you may do*. The persona (admin, teacher, student) decides data scope:
 the whole institute, your classes, or your enrolled classes. Every staff action is a named permission
-(16 of them) checked by middleware. Admins build custom roles from them, such as a Teaching Assistant who can
+(17 of them) checked by middleware. Admins build custom roles from them, such as a Teaching Assistant who can
 only see and release results, and assign them to teachers.
 
 **Q: How do you stop privilege escalation?**
@@ -392,6 +392,15 @@ The last used time step is saved with an atomic conditional update (`lastStep < 
 once, even if two requests race. Recovery codes are removed with an atomic `$pull`. Wrong codes are limited per
 user, not per IP: someone who already has the password could otherwise spread a million guesses over many IPs.
 
+**Q: How does "require 2FA for staff" work, and how do you make sure no endpoint is missed?**
+The check sits in the authentication middleware, which every protected route already uses, and it fails
+closed: staff without 2FA in an institute with the policy get 403 `MFA_SETUP_REQUIRED` everywhere, including
+Socket.io, unless a route explicitly opts in (only the 2FA setup routes and `/api/me`). The alternative, adding
+a check to each route, would rely on every future route remembering it. It's evaluated per request, so it
+applies to sessions that are already open, and only staff without 2FA pay for the extra lookup. Two guards
+stop lock-outs and loopholes: an admin needs 2FA on before switching it on, and under the policy staff can't
+turn 2FA off.
+
 **Q: What if a user loses their phone?**
 They use one of 10 one-time recovery codes, then set 2FA up again. If they lost both, today they're locked out;
 the next step is an admin reset with an audit log entry.
@@ -429,7 +438,7 @@ they can be safely retried. For heavy cross-entity reporting I'd consider Postgr
 - Live games run on one instance (no Socket.io adapter yet).
 - Styles in the CSP still allow inline (React style attributes).
 - AI: level-2 hint re-run measured on 8 of 20 cases; reviews and generated questions not evaluated.
-- 2FA is optional (no "require for staff" policy yet), there's no admin reset for a member who lost both phone
+- 2FA can be required for staff but not students; there's no admin reset for a member who lost both phone
   and recovery codes, and no passkeys/WebAuthn.
 - Next: Redis near the API, more judge workers, the Socket.io Redis adapter, contest pause/extend/rejudge,
   deletes in database transactions.

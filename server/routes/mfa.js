@@ -1,7 +1,8 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
 const User = require('../models/User')
-const { requireAuth } = require('../middleware/auth')
+const Institution = require('../models/Institution')
+const { requireAuthDuringMfaSetup } = require('../middleware/auth')
 const totp = require('../lib/totp')
 const secretBox = require('../lib/secretBox')
 const { makeRecoveryCodes, consumeSecondFactor } = require('../lib/mfa')
@@ -12,7 +13,8 @@ const LIMITS = require('../lib/limits')
 // Turning it on or off asks for the password again, so someone with a moment at a logged-in
 // browser can't lock the owner out by enrolling their own phone.
 const router = express.Router()
-router.use(requireAuth)
+// Open to staff who still have to set up 2FA because of the institute policy (that's the point).
+router.use(requireAuthDuringMfaSetup)
 
 const notConfigured = (res) => res.status(503).json({ error: 'Two-factor login is not available on this server yet' })
 
@@ -73,6 +75,9 @@ router.post('/enable', async (req, res) => {
 router.post('/disable', async (req, res) => {
   const user = await User.findById(req.userId)
   if (!user.mfa?.enabled) return res.status(409).json({ error: 'Two-factor login is already off' })
+  if (req.role !== 'student' && await Institution.exists({ _id: req.institutionId, requireStaffMfa: true })) {
+    return res.status(409).json({ error: "Your institute requires two-factor login for staff, so it can't be turned off" })
+  }
   if (!(await passwordMatches(user, req.body?.password))) return res.status(400).json({ error: 'Your password is not correct' })
   const limited = await checkFactor(req, res, user)
   if (!limited) return

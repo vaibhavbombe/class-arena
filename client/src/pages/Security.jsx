@@ -1,15 +1,61 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import api from '../api.js'
 import AppHeader from '../components/AppHeader.jsx'
 import { errorMessage } from '../session.js'
 import useMe from '../useMe.js'
+import { can } from '../permissions.js'
 import { buttonStyle, cardStyle, colors, dangerButtonStyle, formStyle, ghostButtonStyle, inputStyle, messageStyle, sectionTitleStyle, titleStyle, widePageStyle } from '../styles.js'
 
 const codeInputProps = { inputMode: 'numeric', autoComplete: 'one-time-code', maxLength: 11, style: { ...inputStyle, letterSpacing: '0.2em' } }
 
 // Recovery codes are shown once, right after they're made: only their hashes are kept on the
 // server, so this is the only chance to save them.
+// Admins: require two-factor login for all staff (admins and teachers). Students are never affected.
+function StaffPolicy({ me, ownMfaOn }) {
+  const [required, setRequired] = useState(Boolean(me.institution.requireStaffMfa))
+  const [note, setNote] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  async function toggle(event) {
+    const value = event.target.checked
+    setRequired(value) // show the click at once; put it back if the server refuses
+    setBusy(true)
+    setNote(null)
+    try {
+      const { data } = await api.put('/api/institute/security', { requireStaffMfa: value })
+      setRequired(data.requireStaffMfa)
+      setNote({ ok: true, text: data.requireStaffMfa
+        ? (data.staffWithoutMfa ? `On. ${data.staffWithoutMfa} staff member(s) without two-factor login will be asked to set it up before they can continue.` : 'On. All staff already use two-factor login.')
+        : 'Off. Staff can choose for themselves.' })
+    } catch (error) {
+      setRequired(!value)
+      setNote({ ok: false, text: errorMessage(error, 'Could not change the policy.') })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <h2 style={sectionTitleStyle}>Institute policy</h2>
+      <div style={cardStyle}>
+        <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontWeight: 700 }}>
+          <input type="checkbox" checked={required} onChange={toggle} disabled={busy || (!required && !ownMfaOn)} />
+          <span>Require two-factor login for staff (admins and teachers)</span>
+        </label>
+        <p style={{ color: colors.muted, fontSize: '0.85rem', margin: '0.5rem 0 0' }}>
+          {!required && !ownMfaOn
+            ? 'Turn on two-factor login for your own account first, so this can never lock you out.'
+            : 'Staff without it can log in, but can only use the Security page until they set it up. Students are not affected.'}
+        </p>
+        {note && <p role={note.ok ? 'status' : 'alert'} style={messageStyle(note.ok)}>{note.text}</p>}
+      </div>
+    </>
+  )
+}
+
 function RecoveryCodes({ codes, onDone }) {
   const [copied, setCopied] = useState(false)
   const text = codes.join('\n')
@@ -42,6 +88,7 @@ function RecoveryCodes({ codes, onDone }) {
 
 export default function Security() {
   const me = useMe()
+  const navigate = useNavigate()
   const [status, setStatus] = useState(null)
   const [setup, setSetup] = useState(null) // { secret, otpauthUrl, qr } while turning it on
   const [recoveryCodes, setRecoveryCodes] = useState(null)
@@ -107,6 +154,10 @@ export default function Security() {
   }
 
   if (!me) return null
+  // Under the institute policy, staff can't turn it off (the server refuses too).
+  const lockedOn = me.institution.requireStaffMfa && me.user.role !== 'student'
+  // Once a required setup is done (codes saved), the rest of the app opens up.
+  const finishCodes = () => (me.mfaSetupRequired ? navigate('/dashboard') : setRecoveryCodes(null))
 
   return (
     <main style={widePageStyle}>
@@ -118,19 +169,24 @@ export default function Security() {
         After your password, log in with a 6-digit code from an authenticator app (Google Authenticator,
         Microsoft Authenticator, 1Password…). A stolen password alone is then not enough.
       </p>
+      {me.mfaSetupRequired && !recoveryCodes && (
+        <p role="alert" style={messageStyle(false)}>Your institute requires two-factor login for staff. Set it up below to continue using ClassArena.</p>
+      )}
 
       {!status ? null : !status.available ? (
         <p style={messageStyle(false)}>Two-factor login is not available on this server yet.</p>
       ) : recoveryCodes ? (
-        <RecoveryCodes codes={recoveryCodes} onDone={() => setRecoveryCodes(null)} />
+        <RecoveryCodes codes={recoveryCodes} onDone={finishCodes} />
       ) : status.enabled ? (
         <div style={cardStyle}>
           <p style={{ margin: 0, fontWeight: 700, color: colors.success }}>✓ On since {new Date(status.enabledAt).toLocaleDateString()}</p>
-          <p style={{ color: colors.muted, fontSize: '0.85rem' }}>{status.recoveryCodesLeft} of 10 recovery codes left.</p>
+          <p style={{ color: colors.muted, fontSize: '0.85rem' }}>
+            {status.recoveryCodesLeft} of 10 recovery codes left.{lockedOn ? ' Required by your institute, so it stays on.' : ''}
+          </p>
           {!action && (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button onClick={() => openAction('regenerate')} style={ghostButtonStyle}>New recovery codes</button>
-              <button onClick={() => openAction('disable')} style={dangerButtonStyle}>Turn off</button>
+              {!lockedOn && <button onClick={() => openAction('disable')} style={dangerButtonStyle}>Turn off</button>}
             </div>
           )}
           {action === 'regenerate' && (
@@ -179,6 +235,7 @@ export default function Security() {
         </form>
       )}
       {message && <p role={message.ok ? 'status' : 'alert'} style={messageStyle(message.ok)}>{message.text}</p>}
+      {status?.available && can(me, 'security.manage') && <StaffPolicy me={me} ownMfaOn={status.enabled} />}
       </div>
     </main>
   )

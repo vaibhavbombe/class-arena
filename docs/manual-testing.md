@@ -167,6 +167,13 @@ You need an authenticator app on your phone (Google Authenticator, Microsoft Aut
   one no longer works.
 - [ ] **Turn it off.** Security → **Turn off** → password + a code → "Two-factor login is off". The next login
   asks only for the password.
+- [ ] **Require it for staff (admin).** Admin with 2FA on → Security → tick **Require two-factor login for staff**
+  → it says how many staff still need to set it up. (An admin without 2FA sees the box disabled.)
+- [ ] **A teacher without 2FA is held on the Security page.** Log in as that teacher (password only) → you land
+  on **Security** with "Your institute requires two-factor login…"; clicking **Classes** brings you back. Set it up
+  → after **I've saved them** you reach the dashboard. The **Turn off** button is gone ("Required by your
+  institute"). Students log in as before.
+- [ ] **Switch the policy off** again as the admin → the teacher can turn 2FA off.
 - [ ] **Not readable from the network (optional, F12 → Network).** After the password, the `login` response has
   `mfaRequired` and an `mfaToken` but **no** `accessToken`, and Application → Cookies has **no** `ca_rt` yet.
 
