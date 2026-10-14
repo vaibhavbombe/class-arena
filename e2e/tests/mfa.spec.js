@@ -23,7 +23,9 @@ test('2FA: turn it on from the Security page, then log in with a code (and a rec
 
   // The password alone no longer logs in.
   await page.getByRole('button', { name: 'Log out' }).click()
-  await page.getByPlaceholder('Email').fill(admin.email)
+  // Wait for the login page: the dashboard's invite box ("teacher@email.com") also matches "Email".
+  await expect(page.getByRole('heading', { name: 'Log in' })).toBeVisible()
+  await page.getByPlaceholder('Email', { exact: true }).fill(admin.email)
   await page.getByPlaceholder('Password').fill(PW)
   await page.getByRole('button', { name: 'Log in' }).click()
   await expect(page.getByRole('heading', { name: 'Enter your code' })).toBeVisible()
@@ -41,7 +43,9 @@ test('2FA: turn it on from the Security page, then log in with a code (and a rec
 
   // A recovery code works too, and the Security page counts it as used.
   await page.getByRole('button', { name: 'Log out' }).click()
-  await page.getByPlaceholder('Email').fill(admin.email)
+  // Wait for the login page: the dashboard's invite box ("teacher@email.com") also matches "Email".
+  await expect(page.getByRole('heading', { name: 'Log in' })).toBeVisible()
+  await page.getByPlaceholder('Email', { exact: true }).fill(admin.email)
   await page.getByPlaceholder('Password').fill(PW)
   await page.getByRole('button', { name: 'Log in' }).click()
   await page.getByLabel(/Open your authenticator app/).fill(codes[0])
