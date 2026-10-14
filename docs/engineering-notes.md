@@ -4,6 +4,11 @@ The README lists what the app does and the design decisions. This file is the ot
 that turned up during development, **how each was found**, the fix, and the evidence. Every number here
 was measured; where something is unknown or unfinished, it says so.
 
+**Links:** [live app](https://class-arena-vsb10.vercel.app) ·
+[API health](https://class-arena-server.onrender.com/api/health) ·
+[source code](https://github.com/vaibhavbombe/class-arena) ·
+[CI runs](https://github.com/vaibhavbombe/class-arena/actions/workflows/ci.yml)
+
 ---
 
 ## 1. The live quiz did O(players²) work per question (found by the load test)
@@ -116,6 +121,27 @@ was measured; where something is unknown or unfinished, it says so.
   every run since. It couldn't be reproduced locally (16 parallel stress runs). Instead of guessing a fix, CI now
   posts every failing unit test as a public annotation, so the next occurrence will say exactly what failed.
   **Cause still unknown.**
+- **A browser test that failed only in CI:** the 2FA test passed locally (also against an empty database, as in
+  CI) but failed twice on GitHub's runner. The logs weren't readable without signing in, so CI now reports
+  Playwright failures as annotations too. They showed the cause at once: after "Log out", the test typed the
+  email into the first box matching the placeholder "Email". On the slower runner the dashboard was still on
+  screen, and its invite box (`teacher@email.com`) matches, because placeholder matching is partial and
+  ignores case. Fix: wait for the login page and match exactly. A first guess (a reload after logout) was wrong;
+  the guard added for it is still correct but wasn't the cause.
+
+## 10. Dependency audit: check what actually ships
+
+- **Found:** `npm audit` flagged DOMPurify (through Monaco) and React Router in the client, and Vite/esbuild
+  in its dev tools.
+- **Checked before fixing:** the flagged DOMPurify copy (in the npm Monaco package) **isn't in the built app at
+  all**: the editor loads from the CDN at the version pinned in the CSP, and *that* build carries an older
+  DOMPurify (3.2.7) which the audit can't see. No Monaco release ships a fixed copy yet.
+- **Fixed:** React Router 6 → 7 (open-redirect advisory), Vite 5 → 7 and its React plugin (dev-server
+  advisories; every 5.x and 6.x release was affected), and DOMPurify pinned to 3.4.16 with npm `overrides`.
+  Versions at least two weeks old were chosen, as a precaution against freshly published packages.
+  `npm audit` is now clean for the client, server and e2e packages, and all browser tests pass.
+- **Still open, and documented:** the CDN copy. The CSP blocks inline scripts and event handlers, so injected
+  markup can't run; serving a patched Monaco from the site would remove it.
 
 ---
 
@@ -128,6 +154,6 @@ was measured; where something is unknown or unfinished, it says so.
 | Contest judge, 50 simultaneous submissions | 31.8 s, ~1.6/s | same laptop |
 | Level-1 hints giving the fix away | 0/20 | 20-case evaluation, one reviewer |
 | Level-2 hints giving the fix away | 17/19 → 0/8 (partial re-run) | same |
-| Tests | 120 unit, 23 integration suites, 7 browser tests | CI on every push |
+| Tests | 140 unit, 26 integration suites (425 checks), 11 browser tests | CI on every push |
 
 None of these were measured on the hosted (free-tier) deployment.

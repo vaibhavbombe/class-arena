@@ -3,7 +3,13 @@
 A walk through the problem, the design, the technology choices (and what I didn't choose, and why),
 the hard problems I hit, and the questions an interviewer is likely to ask, from basic to advanced.
 Every number here was measured; where something is a limit or unfinished, it says so.
-Shorter companions: the [README](../README.md) and [engineering notes](engineering-notes.md).
+Shorter companions: the [README](../README.md), [engineering notes](engineering-notes.md) and the
+[manual testing guide](manual-testing.md).
+
+**Links:** [live app](https://class-arena-vsb10.vercel.app) ·
+[API health](https://class-arena-server.onrender.com/api/health) ·
+[source code](https://github.com/vaibhavbombe/class-arena) ·
+[CI runs](https://github.com/vaibhavbombe/class-arena/actions/workflows/ci.yml)
 
 **Contents**
 1. [Problem statement](#1-problem-statement)
