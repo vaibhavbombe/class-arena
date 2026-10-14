@@ -2,14 +2,17 @@
 
 [![CI](https://github.com/vaibhavbombe/class-arena/actions/workflows/ci.yml/badge.svg)](https://github.com/vaibhavbombe/class-arena/actions/workflows/ci.yml)
 
-A multi-tenant classroom and competition platform for institutes. **Work in progress:** built so far
-are accounts and classes (Phase 1), a question bank with timed, auto-graded tests (Phase 2),
-Kahoot-style live quiz battles (Phase 3), JavaScript coding questions judged in a sandbox, for practice
-and inside tests (Phase 4), live ICPC-style coding contests (Phase 5), a class analytics dashboard, and AI features
-(Phase 6): hints and feedback on coding practice, and a question generator for teachers.
+A multi-tenant classroom and competition platform for institutes: accounts and classes, a question bank
+with timed, auto-graded tests, Kahoot-style live quiz battles, JavaScript coding questions judged in a
+sandbox (for practice and inside tests), live ICPC-style coding contests, AI hints, feedback and question
+generation, a class analytics dashboard, custom roles and permissions, and two-factor login.
 
 **Live:** https://class-arena-vsb10.vercel.app (the API runs on Render's free tier, so the
-first request after it has been idle can take ~50 seconds)
+first request after it has been idle can take ~50 seconds; [API health check](https://class-arena-server.onrender.com/api/health))
+
+**Docs:** [manual testing guide](docs/manual-testing.md) (every feature, step by step) ·
+[project deep-dive](docs/project-deep-dive.md) (design, alternatives, interview Q&A) ·
+[engineering notes](docs/engineering-notes.md) (real problems found while building, and the fixes)
 
 **Try it** with the demo institute (password `Demo-Arena1!` for all of these; the data was made with
 `scripts/seed-demo.js` and other visitors can change it):
@@ -94,7 +97,7 @@ The demo admin's password isn't shared, because admins can send invite emails.
 - **Email:** teacher invites and "forgot password" reset links (Brevo HTTP API in production).
 
 ## Stack
-React 18 + Vite, React Router, axios · Node.js + Express 5, Mongoose (MongoDB Atlas),
+React 18 + Vite 7, React Router 7, axios, Monaco editor, qrcode · Node.js 22 + Express 5, Mongoose (MongoDB Atlas),
 bcrypt, jsonwebtoken, Socket.io, Redis (ioredis), Brevo (production email) / nodemailer + Gmail (local) ·
 Vercel (client), Render (server)
 
@@ -313,6 +316,11 @@ every technology choice against its alternatives, and questions from basic to sy
   page is open (the Content-Security-Policy makes injecting and exfiltrating harder, not impossible: styles
   still allow inline). The Monaco version is pinned in the CSP, so upgrading the editor means updating
   `client/vercel.json` (the browser tests fail on any CSP violation, so a mismatch is caught).
+- Dependencies: `npm audit` reports no known vulnerabilities in the client, server or e2e packages (checked
+  2026-10-14). The code editor itself is loaded from the CDN at the version pinned in the CSP (Monaco 0.55.1),
+  and that build carries its own copy of DOMPurify 3.2.7, which has published advisories (no Monaco release
+  ships a fixed copy yet). Monaco uses it to render its own markdown (hover and suggestion text), and the CSP forbids inline scripts and
+  event handlers, so injected markup can't run; serving a patched Monaco from the site would remove it.
 - Browser tests cover seven core flows only (see **Testing**); the other screens have been checked by hand.
 - The code judge runs JavaScript only. A V8 isolate is a weaker boundary than a kernel-level sandbox
   (namespaces/seccomp, as in Judge0), and the worker shares the host with the API on Render's single
@@ -553,4 +561,8 @@ because the API (correctly) doesn't allow backdating submissions.
 | GET | `/api/tests/:id/results/:studentId` | class teacher, admin |
 
 ## Roadmap
-7. A load test with measured numbers (simulated students in live games and contests) and demo data
+All seven planned phases are built, plus custom roles and two-factor login. Next, in rough order:
+- Serve a patched Monaco from the site instead of the CDN (see **Known limitations**).
+- An audit log page for security events (2FA resets, role changes, policy changes), and passkeys (WebAuthn).
+- Scaling live games past one instance: the Socket.io Redis adapter, Redis close to the API, more judge workers.
+- Contest controls (pause, extend, rejudge) and deletes inside database transactions.

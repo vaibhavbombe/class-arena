@@ -3,6 +3,11 @@
 Test everything yourself on the live site, step by step. Each step says what to do and **what you should
 see** (→). Tick the boxes as you go.
 
+**Links:** [live app](https://class-arena-vsb10.vercel.app) ·
+[API health](https://class-arena-server.onrender.com/api/health) ·
+[source code](https://github.com/vaibhavbombe/class-arena) ·
+[CI runs](https://github.com/vaibhavbombe/class-arena/actions/workflows/ci.yml)
+
 ## 0. Setup
 
 - Site: **https://class-arena-vsb10.vercel.app**. The API sleeps when idle on Render's free tier: the first
