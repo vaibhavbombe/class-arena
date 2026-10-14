@@ -13,6 +13,7 @@ const CATALOG = {
   'members.invite': { group: 'Institute', label: 'Invite teachers' },
   'members.remove': { group: 'Institute', label: 'Remove members' },
   'roles.manage': { group: 'Institute', label: 'Create roles and assign them', adminOnly: true },
+  'security.manage': { group: 'Institute', label: 'Security policy (require two-factor login for staff)', adminOnly: true },
   'classes.create': { group: 'Classes', label: 'Create classes' },
   'classes.manage': { group: 'Classes', label: 'Manage own classes (join code, students, delete)' },
   'classes.assign': { group: 'Classes', label: 'Move a class to another teacher' },

@@ -16,6 +16,7 @@ function attachRealtime(httpServer) {
     try {
       const { identity, error } = await authenticateToken(token)
       if (error) return next(new Error('unauthorized'))
+      if (identity.mfaSetupRequired) return next(new Error('mfa_setup_required'))
       socket.data.user = identity
       next()
     } catch (err) {

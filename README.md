@@ -25,7 +25,7 @@ The demo admin's password isn't shared, because admins can send invite emails.
     removes members and hands a class to another teacher.
   - *Teacher*: creates and deletes classes, sees join codes and rosters, removes students from a class.
   - *Student*: signs up with a 6-character class join code and can join more classes from the dashboard.
-- **Custom roles and permissions (IAM):** every staff action is a named permission (16, e.g. `tests.manage`,
+- **Custom roles and permissions (IAM):** every staff action is a named permission (17, e.g. `tests.manage`,
   `results.release`, `members.invite`). Admins build custom roles from them with checkboxes, such as a
   "Teaching Assistant" who can only see and release results, or a "Head of Department" who can read every
   class but change none, and give them to teachers; it applies on the teacher's next request. Buttons a
@@ -35,7 +35,8 @@ The demo admin's password isn't shared, because admins can send invite emails.
 - **Two-factor login (2FA):** any user can turn it on from the Security page by scanning a QR code with an
   authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…). Login then asks for the
   6-digit code after the password; 10 one-time recovery codes cover a lost phone. The member list shows who
-  has it on.
+  has it on. An admin can **require it for all staff**: teachers and admins without it can still log in, but
+  can only use the Security page until they've set it up (students are never affected).
 - **Question bank** (teachers and admins): multiple choice, multi-select and short-answer questions
   with tags, difficulty, an explanation, search and filters. Teachers see their own questions; admins
   see the whole institute. Students can't reach it at all.
@@ -283,6 +284,12 @@ every technology choice against its alternatives, and questions from basic to sy
   removed as it's used. Wrong codes are limited per user (10 per 15 minutes), not per IP, because someone who
   has the password could otherwise guess from many IPs. A wrong password gives the same 401 whether 2FA is on
   or not. The QR code is drawn in the browser (`qrcode` package), so the secret is never sent to a QR service.
+  **"Require 2FA for staff" fails closed:** the check is in the auth middleware, so every authenticated route
+  refuses staff without 2FA (403 `MFA_SETUP_REQUIRED`, and Socket.io connections too) unless the route opts in
+  with `requireAuthDuringMfaSetup`: only the 2FA routes and `/api/me` do. A route added later is protected
+  without anyone remembering to. It's checked per request, so it applies immediately to sessions already open.
+  An admin can only switch it on with 2FA on for their own account (so it can't lock them out), and under the
+  policy staff can't turn their own 2FA off.
 - **Password reset doesn't reveal who has an account.** "Forgot password" gives the same answer for
   any email and sends the email in the background, so response time doesn't leak it either. Only a
   SHA-256 hash of the reset token is stored; links are single-use, expire in 30 minutes, are limited
@@ -293,7 +300,7 @@ every technology choice against its alternatives, and questions from basic to sy
   is down they allow everything rather than block logins. A determined attacker spreading guesses across many
   IPs is slowed (50 failures per account per hour) but not stopped; there is no CAPTCHA or account lockout email.
 - One email address can belong to only one institute.
-- Two-factor login is optional per user; an admin can't yet require it for staff. Someone who loses their phone
+- Two-factor login can be required for staff, but not for students. Someone who loses their phone
   *and* their recovery codes can't get back in on their own, and an admin can't reset another member's 2FA yet.
   A password reset doesn't turn 2FA off (by design). There are no passkeys/WebAuthn, and no "remember this
   device": every login asks for a code.
@@ -363,7 +370,7 @@ To test by hand, follow [docs/manual-testing.md](docs/manual-testing.md) (every 
   test rules, grading, attempt rules (deadlines, grace period, shuffling, and that nothing sent to
   students contains answers), results statistics, class analytics, contest ranking (penalties, ties, first solves, the freeze), the AI client (schema checks, retry, timeouts, no retry on 401, the key never logged) and hint rules (code detection, prompt contents, fallbacks), the question generator's validation, feedback rules, two-factor login (TOTP against the RFC 6238/4226 test vectors, secret encryption and tamper detection, the halfway login token), and the code judge (every verdict,
   sandbox-escape probes, limits that can't be raised, and that the worker gets no app secrets).
-- **Integration tests** (`npm run test:integration`, 25 suites, 399 checks; add suite names to run only those): start the API on a spare
+- **Integration tests** (`npm run test:integration`, 26 suites, 417 checks; add suite names to run only those): start the API on a spare
   port with email disabled and exercise it over HTTP against a real MongoDB database — roles and
   tenant isolation, invites, password reset and rules, member management, question bank, tests,
   taking tests (including five simultaneous "Start" clicks and an expired deadline), results, and a
@@ -378,7 +385,9 @@ To test by hand, follow [docs/manual-testing.md](docs/manual-testing.md) (every 
   limits) and submission feedback (one review per submission even on a double click, no code, fallback,
   only the submitting student, limits), custom roles, two-factor login (setup needs the password and a real code, the secret is
   stored encrypted and never returned, login gives no session until the code, the halfway token can't act as an access token,
-  no code replay, recovery codes work once), and rate limits (run against a second API with limits on and fresh
+  no code replay, recovery codes work once, and the "require 2FA for staff" policy: only admins with 2FA can switch it
+  on, staff without 2FA refused on HTTP and Socket.io except the setup routes, students and other institutes unaffected,
+  no turning 2FA off under it), and rate limits (run against a second API with limits on and fresh
   counters: failed logins, unknown emails treated the same, reset on success, spoofed X-Forwarded-For ignored,
   wrong class codes and game PINs, signups per IP). The runner refuses databases whose names don't end in `-dev`
   or `-test`, so it can't touch production. They leave their test data behind in that database.
@@ -387,12 +396,13 @@ To test by hand, follow [docs/manual-testing.md](docs/manual-testing.md) (every 
   secrets: email is off and AI goes to the fake AI server).
 - **Load test** (`npm run loadtest`): simulated students in live quizzes and a contest; see **Performance** below.
   It measures, it doesn't pass or fail, and it isn't run automatically.
-- **Browser tests** (`e2e/`, `npx playwright test`, 9 tests, also in CI): Playwright starts its own API and serves the
+- **Browser tests** (`e2e/`, `npx playwright test`, 10 tests, also in CI): Playwright starts its own API and serves the
   client's **production build with the same headers as Vercel** (CSP included; any CSP violation fails a test)
   and drives Chromium through logging in (and checking that no token is readable by page scripts and that a reload keeps you logged in), a student taking a timed test, a live quiz with the teacher and a
   student in two browsers at once, coding practice in Monaco judged on submit, and that code run in the browser
   can't make network requests, a custom role changing what a teacher's screens offer, and turning on 2FA from the
-  Security page and then logging in with a code and with a recovery code. The live quiz test found a
+  Security page and then logging in with a code and with a recovery code, and an admin requiring 2FA for staff so a
+  teacher without it is held on the Security page until they set it up. The live quiz test found a
   real bug (the last player to answer missed their result), now fixed.
 - Not covered: most UI screens (only those five flows run in a browser; the rest was checked by hand and with
   screenshots), performance of the hosted deployment, and email delivery itself.
@@ -484,6 +494,7 @@ because the API (correctly) doesn't allow backdating submissions.
 | POST | `/api/auth/login`, `/refresh`, `/logout` | anyone (login returns `mfaRequired` + `mfaToken` when 2FA is on) |
 | POST | `/api/auth/login/mfa` (`{ mfaToken, code }`) | anyone with a halfway token: a 6-digit code or a recovery code |
 | GET | `/api/auth/mfa` | logged in: 2FA status, recovery codes left |
+| PUT | `/api/institute/security` (`{ requireStaffMfa }`) | `security.manage` (admins, with their own 2FA on to switch it on) |
 | POST | `/api/auth/mfa/setup` (password) · `/enable` (code) · `/disable` (password + code) · `/recovery-codes` (code) | logged in: their own 2FA |
 | POST | `/api/auth/forgot-password`, `/reset-password` | anyone |
 | GET | `/api/me` | logged in (includes `roleName` and `permissions`) |

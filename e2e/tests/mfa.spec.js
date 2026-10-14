@@ -1,4 +1,4 @@
-const { test, expect, PW, setupClass, login } = require('./helpers')
+const { test, expect, PW, call, setupClass, login } = require('./helpers')
 // The test plays the authenticator app: same RFC 6238 code generator the server uses.
 const totp = require('../../server/lib/totp')
 
@@ -53,4 +53,51 @@ test('2FA: turn it on from the Security page, then log in with a code (and a rec
   await expect(page).toHaveURL(/\/dashboard/)
   await page.getByRole('link', { name: 'Security' }).click()
   await expect(page.getByText('9 of 10 recovery codes left.')).toBeVisible()
+})
+
+test('2FA policy: the admin requires it for staff; a teacher without it is kept on the Security page until set up', async ({ page }) => {
+  const { admin } = await setupClass()
+  // Admin 2FA and a teacher, through the API (not what this test is about).
+  const { secret: adminSecret } = await call('POST', '/api/auth/mfa/setup', { password: PW }, admin.accessToken)
+  await call('POST', '/api/auth/mfa/enable', { code: totp.generate(adminSecret) }, admin.accessToken)
+  const teacherEmail = `e2e-teacher-${Date.now()}@example.com`
+  const { inviteUrl } = await call('POST', '/api/invites', { email: teacherEmail, role: 'teacher' }, admin.accessToken)
+  await call('POST', '/api/invites/accept', { token: new URL(inviteUrl).searchParams.get('token'), name: 'Tina Teacher', password: PW })
+
+  async function logIn(email, code) {
+    await page.goto('/login')
+    await page.getByPlaceholder('Email', { exact: true }).fill(email)
+    await page.getByPlaceholder('Password').fill(PW)
+    await page.getByRole('button', { name: 'Log in' }).click()
+    if (code) {
+      await page.getByLabel(/Open your authenticator app/).fill(code)
+      await page.getByRole('button', { name: 'Verify' }).click()
+    }
+  }
+
+  await logIn(admin.email, totp.generate(adminSecret, Date.now() + 30_000))
+  await expect(page).toHaveURL(/\/dashboard/)
+  await page.getByRole('link', { name: 'Security' }).click()
+  await page.getByLabel('Require two-factor login for staff (admins and teachers)').check()
+  await expect(page.getByText('1 staff member(s) without two-factor login')).toBeVisible()
+  await page.getByRole('button', { name: 'Log out' }).click()
+  await expect(page.getByRole('heading', { name: 'Log in' })).toBeVisible()
+
+  // The teacher's password still works, but only the Security page does.
+  await logIn(teacherEmail)
+  await expect(page).toHaveURL(/\/security/)
+  await expect(page.getByText('Your institute requires two-factor login for staff')).toBeVisible()
+  await page.getByRole('link', { name: 'Classes' }).click()
+  await expect(page).toHaveURL(/\/security/)
+
+  await page.getByPlaceholder('Confirm your password').fill(PW)
+  await page.getByRole('button', { name: 'Set up two-factor login' }).click()
+  const secret = (await page.getByTestId('mfa-secret').textContent()).replace(/\s/g, '')
+  await page.getByLabel('2. Enter the 6-digit code the app shows').fill(totp.generate(secret))
+  await page.getByRole('button', { name: 'Turn on' }).click()
+  await page.getByRole('button', { name: "I've saved them" }).click()
+  await expect(page).toHaveURL(/\/dashboard/)
+  await page.getByRole('link', { name: 'Security' }).click()
+  await expect(page.getByText('Required by your institute, so it stays on.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Turn off' })).toHaveCount(0)
 })

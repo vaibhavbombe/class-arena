@@ -16,7 +16,7 @@ const Attempt = require('../models/Attempt')
 const CodeSubmission = require('../models/CodeSubmission')
 const ContestSubmission = require('../models/ContestSubmission')
 const Hint = require('../models/Hint')
-const { requireAuth, requirePermission } = require('../middleware/auth')
+const { requireAuth, requireAuthDuringMfaSetup, requirePermission } = require('../middleware/auth')
 const { authResponse, publicUser } = require('../lib/tokens')
 const { rejectInvalid } = require('../lib/validate')
 const { sendMail } = require('../lib/mailer')
@@ -24,11 +24,32 @@ const { SALT_ROUNDS } = require('./auth')
 
 const router = express.Router()
 
-router.get('/me', requireAuth, async (req, res) => {
+// Open during a required 2FA setup, so the app can show who is logged in and send them to Security.
+router.get('/me', requireAuthDuringMfaSetup, async (req, res) => {
   const user = await User.findById(req.userId)
   const institution = await Institution.findById(req.institutionId)
   // permissions only decide what the UI shows; the server checks them on every request.
-  res.json({ user: publicUser(user), institution: { id: institution._id, name: institution.name }, roleName: req.roleName, permissions: req.permissions })
+  res.json({
+    user: publicUser(user),
+    institution: { id: institution._id, name: institution.name, requireStaffMfa: Boolean(institution.requireStaffMfa) },
+    roleName: req.roleName,
+    permissions: req.permissions,
+    mfaEnabled: Boolean(user.mfa?.enabled),
+    mfaSetupRequired: req.mfaSetupRequired,
+  })
+})
+
+// Security policy: require two-factor login for staff. Admin-only permission (like roles.manage), and only
+// with 2FA on themselves, so an admin can't lock themselves out by switching it on.
+router.put('/institute/security', requireAuth, requirePermission('security.manage'), async (req, res) => {
+  if (typeof req.body?.requireStaffMfa !== 'boolean') return res.status(400).json({ error: 'requireStaffMfa must be true or false' })
+  if (req.body.requireStaffMfa) {
+    const me = await User.findById(req.userId).select('mfa.enabled')
+    if (!me.mfa?.enabled) return res.status(409).json({ error: 'Turn on two-factor login for your own account first' })
+  }
+  await Institution.updateOne({ _id: req.institutionId }, { $set: { requireStaffMfa: req.body.requireStaffMfa } })
+  const staffWithout = await User.countDocuments({ institutionId: req.institutionId, role: { $in: ['admin', 'teacher'] }, 'mfa.enabled': { $ne: true } })
+  res.json({ requireStaffMfa: req.body.requireStaffMfa, staffWithoutMfa: staffWithout })
 })
 
 // Only ever returns users from the caller's own institute (req.institutionId
