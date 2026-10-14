@@ -60,6 +60,21 @@ async function enableMfa(token) {
   check('the admin can switch the policy off', policyOff.s === 200 && policyOff.d.requireStaffMfa === false, policyOff.d)
   check('then staff may turn 2FA off again', (await call('POST', '/api/auth/mfa/disable', { password: PW, code: totp.generate(teacherSecret, Date.now() + 30_000) }, T.accessToken)).s === 200, null)
 
+  // Admin reset for a member who lost their phone and recovery codes.
+  const R = await invite(A.accessToken, 'pol-r-')
+  await enableMfa(R.accessToken)
+  const reset = (id, body, token = A.accessToken) => call('POST', `/api/members/${id}/mfa-reset`, body, token)
+  check('a teacher cannot reset someone\'s 2FA', (await reset(R.user.id, { password: PW }, T.accessToken)).s === 403, null)
+  check('the admin must confirm with their password', (await reset(R.user.id, { password: 'Wrong-pass1!' })).s === 400 && (await reset(R.user.id, {})).s === 400, null)
+  check('not for your own account', (await reset(A.user.id, { password: PW })).s === 400, null)
+  check('not for members of another institute', (await reset(R.user.id, { password: PW }, B.accessToken)).s === 404, null)
+  check('not for a member without 2FA', (await reset(T.user.id, { password: PW })).s === 409, null)
+  const done = await reset(R.user.id, { password: PW })
+  check('the admin resets it', done.s === 200 && (await call('GET', '/api/auth/mfa', null, R.accessToken)).d.enabled === false, done.d)
+  check('...and the member is signed out everywhere (old refresh cookie refused)', (await call('POST', '/api/auth/refresh', null, null, { cookie: R.refreshToken })).s === 401, null)
+  const back = await call('POST', '/api/auth/login', { email: `pol-r-${run}@example.com`, password: PW })
+  check('...and can log in with the password and set 2FA up again', back.s === 200 && typeof back.d.accessToken === 'string' && !back.d.mfaRequired, back.d)
+
   await finish()
 })().catch((err) => {
   console.error(err)

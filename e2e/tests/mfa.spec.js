@@ -101,3 +101,24 @@ test('2FA policy: the admin requires it for staff; a teacher without it is kept 
   await expect(page.getByText('Required by your institute, so it stays on.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Turn off' })).toHaveCount(0)
 })
+
+test('2FA reset: an admin resets a teacher who lost their phone, after confirming with their own password', async ({ page }) => {
+  const { admin } = await setupClass()
+  const teacherEmail = `e2e-lost-${Date.now()}@example.com`
+  const { inviteUrl } = await call('POST', '/api/invites', { email: teacherEmail, role: 'teacher' }, admin.accessToken)
+  const teacher = await call('POST', '/api/invites/accept', { token: new URL(inviteUrl).searchParams.get('token'), name: 'Lost Phone', password: PW })
+  const { secret } = await call('POST', '/api/auth/mfa/setup', { password: PW }, teacher.accessToken)
+  await call('POST', '/api/auth/mfa/enable', { code: totp.generate(secret) }, teacher.accessToken)
+
+  await login(page, admin.email)
+  const row = page.getByRole('row', { name: /Lost Phone/ })
+  await expect(row.getByTitle('Two-factor login is on')).toBeVisible()
+  await row.getByRole('button', { name: 'Reset 2FA' }).click()
+  await page.getByPlaceholder('Your password').fill('Wrong-pass1!')
+  await page.getByRole('button', { name: 'Reset 2FA' }).last().click()
+  await expect(page.getByText('Your password is not correct')).toBeVisible()
+  await page.getByPlaceholder('Your password').fill(PW)
+  await page.getByRole('button', { name: 'Reset 2FA' }).last().click()
+  await expect(page.getByText('Two-factor login was reset for Lost Phone')).toBeVisible()
+  await expect(row.getByTitle('Two-factor login is on')).toHaveCount(0)
+})
