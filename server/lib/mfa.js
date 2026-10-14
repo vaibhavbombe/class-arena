@@ -12,10 +12,11 @@ const RECOVERY_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789' // no 0/o, 1/l/i to 
 
 const hashCode = (code) => crypto.createHash('sha256').update(String(code).trim().toLowerCase().replace(/\s/g, '')).digest('hex')
 
-// 10 codes like "k7m2-x9qp" (about 50 bits each); only their hashes are stored.
+// 10 codes like "k7m2x-9qpab" (about 50 bits each); only their hashes are stored. randomInt picks each
+// character uniformly (byte % 31 would make the first few letters slightly more likely).
 function makeRecoveryCodes() {
   const codes = Array.from({ length: RECOVERY_COUNT }, () => {
-    const chars = Array.from(crypto.randomBytes(10), (b) => RECOVERY_ALPHABET[b % RECOVERY_ALPHABET.length])
+    const chars = Array.from({ length: 10 }, () => RECOVERY_ALPHABET[crypto.randomInt(RECOVERY_ALPHABET.length)])
     return `${chars.slice(0, 5).join('')}-${chars.slice(5).join('')}`
   })
   return { codes, hashes: codes.map(hashCode) }

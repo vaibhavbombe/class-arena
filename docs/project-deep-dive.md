@@ -207,12 +207,12 @@ Each is *problem → how I found it → fix → proof*. Details in [engineering-
 
 ## 7. Testing and quality
 
-- **Unit tests (120):** pure logic: grading, attempt rules, ranking, analytics, AI validation, the judge
-  (every verdict, escape attempts, limits that can't be raised).
-- **Integration tests (23 suites):** a real API and database over HTTP and Socket.io: tenant isolation, roles,
+- **Unit tests (140):** pure logic: grading, attempt rules, ranking, analytics, AI validation, the judge
+  (every verdict, escape attempts, limits that can't be raised), TOTP against the RFC test vectors.
+- **Integration tests (25 suites, 399 checks):** a real API and database over HTTP and Socket.io: tenant isolation, roles,
   races (simultaneous starts, autosave vs submit, simultaneous answers), the judge, contests, AI against a
   **fake AI server** (no cost, deterministic failures), rate limits on a second API with limits switched on.
-- **Browser tests (7, Playwright):** run against the **production build with the production headers**, so the
+- **Browser tests (9, Playwright):** run against the **production build with the production headers**, so the
   CSP is tested too; any CSP violation fails a test.
 - **CI (GitHub Actions):** all three layers on every push, with MongoDB and Redis as throwaway containers and no
   secrets. Failing unit tests appear as public annotations.
@@ -242,6 +242,8 @@ Each is *problem → how I found it → fix → proof*. Details in [engineering-
 - Student code: isolated-vm in a separate, secret-free process; in the browser, a worker with no network.
 - Auth: bcrypt; 15-minute access token in memory; rotating refresh token in an httpOnly, Secure,
   SameSite=Strict cookie; reset tokens stored as SHA-256 hashes, single-use, 30-minute expiry.
+- Optional two-factor login (TOTP): secret encrypted with AES-256-GCM, recovery codes hashed, no session until
+  the code, no code replay, wrong codes limited per user.
 - Rate limits that count *failures* per target (wrong passwords, class codes, PINs), generous per-IP limits
   because a school shares one IP; unknown emails treated exactly like real ones.
 - Content-Security-Policy (scripts only from the site and the pinned editor version on the CDN), security headers
@@ -361,6 +363,39 @@ another teacher's test. Defaulting to strict means a forgotten endpoint fails cl
 `/api/me` returns the resolved permissions and the UI hides what you can't use, but the server is the only
 authority; and a unit test scans the routes and fails if a staff action is ever gated by role again.
 
+### Two-factor login (2FA)
+
+**Q: Why TOTP and not SMS or email codes?**
+TOTP works offline, costs nothing per login, and doesn't depend on the phone network; SMS codes can be stolen
+by SIM swapping and need a paid provider. Passkeys (WebAuthn) are stronger still, since they also stop
+phishing; they'd be the next step.
+
+**Q: How does TOTP work?**
+The server and the app share a random 20-byte secret (from the QR code). Every 30 seconds both compute
+HMAC-SHA1(secret, time step) and shorten it to 6 digits (RFC 4226/6238). The server accepts the current step and
+one either side, for clocks that are slightly off. I implemented it from the RFC (under 90 lines, base32 included) and the unit
+tests check it against the RFC's published test vectors, instead of trusting a library blindly.
+
+**Q: Where is the secret stored?**
+Encrypted with AES-256-GCM under a key that lives only in an environment variable, so a database dump alone
+doesn't reveal it. GCM also detects tampering. Recovery codes are stored as SHA-256 hashes, like passwords
+would be if they were random and long (so a slow hash isn't needed). The members list uses an explicit field
+list so these fields can never leak through it.
+
+**Q: How does the login flow work without weakening the session model?**
+A correct password for a 2FA account returns only a 5-minute "halfway" token, signed with a separate key derived
+from the access-token secret. It can't be used as a session, and an access token can't skip the code step;
+tests check both. `POST /login/mfa` with that token and a code issues the normal access token and refresh cookie.
+
+**Q: What stops someone from reusing a code they saw?**
+The last used time step is saved with an atomic conditional update (`lastStep < this step`), so a code works
+once, even if two requests race. Recovery codes are removed with an atomic `$pull`. Wrong codes are limited per
+user, not per IP: someone who already has the password could otherwise spread a million guesses over many IPs.
+
+**Q: What if a user loses their phone?**
+They use one of 10 one-time recovery codes, then set 2FA up again. If they lost both, today they're locked out;
+the next step is an admin reset with an audit log entry.
+
 ### System design follow-ups
 
 **Q: How would you support 10,000 students in live quizzes at once?**
@@ -394,6 +429,8 @@ they can be safely retried. For heavy cross-entity reporting I'd consider Postgr
 - Live games run on one instance (no Socket.io adapter yet).
 - Styles in the CSP still allow inline (React style attributes).
 - AI: level-2 hint re-run measured on 8 of 20 cases; reviews and generated questions not evaluated.
+- 2FA is optional (no "require for staff" policy yet), there's no admin reset for a member who lost both phone
+  and recovery codes, and no passkeys/WebAuthn.
 - Next: Redis near the API, more judge workers, the Socket.io Redis adapter, contest pause/extend/rejudge,
   deletes in database transactions.
 

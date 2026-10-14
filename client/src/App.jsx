@@ -15,6 +15,7 @@ import PlayGame from './pages/PlayGame.jsx'
 import ProblemPage from './pages/ProblemPage.jsx'
 import QuestionBank from './pages/QuestionBank.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
+import Security from './pages/Security.jsx'
 import Signup from './pages/Signup.jsx'
 import StudentSignup from './pages/StudentSignup.jsx'
 import TestPage from './pages/TestPage.jsx'
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/classes/:id" element={<ClassDetail />} />
         <Route path="/classes/:id/analytics" element={<ClassAnalytics />} />
         <Route path="/questions" element={<QuestionBank />} />
+        <Route path="/security" element={<Security />} />
         <Route path="/tests/:id" element={<TestPage />} />
         <Route path="/tests/:id/results" element={<TestResults />} />
         <Route path="/live-quizzes/:id" element={<LiveQuizEditor />} />

@@ -52,6 +52,9 @@ api.interceptors.response.use(
     if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
       return Promise.reject(error)
     }
+    // Already logged out (e.g. a page was still loading when "Log out" was clicked): nothing to
+    // refresh, and reloading /login here would wipe what the user is typing on the login page.
+    if (!isLoggedIn()) return Promise.reject(error)
     originalRequest._retry = true
     try {
       const token = await refreshAccessToken()

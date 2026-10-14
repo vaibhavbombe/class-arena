@@ -107,7 +107,10 @@ export default function MembersPanel({ me, rolesVersion = 0 }) {
           <tbody>
             {members.map((member) => (
               <tr key={member._id}>
-                <td style={cellStyle}>{member.name}</td>
+                <td style={cellStyle}>
+                  {member.name}
+                  {member.mfaEnabled && <span title="Two-factor login is on" style={{ marginLeft: '0.4rem', fontSize: '0.7rem', fontWeight: 800, color: colors.success, border: `1px solid ${colors.success}`, borderRadius: '999px', padding: '0 0.4rem' }}>2FA</span>}
+                </td>
                 <td style={{ ...cellStyle, color: colors.muted }}>{member.email}</td>
                 <td style={{ ...cellStyle, color: colors.success }}>
                   {member.role === 'teacher' && canAssign ? (
